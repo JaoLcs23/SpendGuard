@@ -1,0 +1,68 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <group
+        android:translateX="13.5"
+        android:translateY="13.5"
+        android:scaleX="0.75"
+        android:scaleY="0.75">
+
+        <!-- Contorno externo do escudo -->
+        <path
+            android:strokeColor="#FFBB00"
+            android:strokeWidth="2.5"
+            android:strokeLineJoin="round"
+            android:strokeLineCap="round"
+            android:fillColor="@android:color/transparent"
+            android:pathData="M54,14 L87,25 L87,54 C87,71 72,84 54,94 C36,84 21,71 21,54 L21,25 Z" />
+
+        <!-- Linha interna fina seguindo o contorno do escudo -->
+        <path
+            android:strokeColor="#FFBB00"
+            android:strokeWidth="1"
+            android:strokeLineJoin="round"
+            android:strokeLineCap="round"
+            android:fillColor="@android:color/transparent"
+            android:pathData="M54,21 L81,30.5 L81,54 C81,68 68,79 54,88 C40,79 27,68 27,54 L27,30.5 Z" />
+
+        <!-- Arco do cadeado (-2px) -->
+        <path
+            android:strokeColor="#FFBB00"
+            android:strokeWidth="2.5"
+            android:strokeLineCap="round"
+            android:fillColor="@android:color/transparent"
+            android:pathData="M43,44 L43,36 C43,27 65,27 65,36 L65,44" />
+
+        <!-- Corpo do cadeado (-2px) -->
+        <path
+            android:strokeColor="#FFBB00"
+            android:strokeWidth="2.5"
+            android:strokeLineJoin="round"
+            android:fillColor="@android:color/transparent"
+            android:pathData="M39,44 L69,44 L69,68 C69,69.5 67.5,71 66,71 L42,71 C40.5,71 39,69.5 39,68 Z" />
+
+        <!-- Símbolo R$ (-2px) -->
+        <path
+            android:strokeColor="#FFBB00"
+            android:strokeWidth="2.8"
+            android:strokeLineCap="round"
+            android:fillColor="@android:color/transparent"
+            android:pathData="M54,48.5 L54,50.5" />
+        <path
+            android:strokeColor="#FFBB00"
+            android:strokeWidth="2.8"
+            android:strokeLineCap="round"
+            android:fillColor="@android:color/transparent"
+            android:pathData="M58,53.5 C58,51.5 56.2,50.8 54,50.8 C51.8,50.8 50,51.8 50,53.8 C50,55.8 51.8,56.5 54,57.2 C56.2,57.9 58,58.8 58,61 C58,63.2 56.2,64.2 54,64.2 C51.8,64.2 50,63 50,61.2" />
+        <path
+            android:strokeColor="#FFBB00"
+            android:strokeWidth="2.8"
+            android:strokeLineCap="round"
+            android:fillColor="@android:color/transparent"
+            android:pathData="M54,64.2 L54,66.5" />
+
+    </group>
+</vector>

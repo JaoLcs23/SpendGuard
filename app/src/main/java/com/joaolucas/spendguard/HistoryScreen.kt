@@ -1,0 +1,957 @@
+package com.joaolucas.spendguard
+
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.*
+import kotlin.math.roundToInt
+
+private const val JIT_DOMINANT_THRESHOLD = 0.40f
+private const val JIT_MIN_TOTAL = 30.0
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HistoryScreen(
+    database: SpendGuardDatabase,
+    userRepository: UserRepository,
+    onOpenImport: () -> Unit
+) {
+    val currentUserId = userRepository.getCurrentUserId() ?: ""
+    val purchases by database.purchaseDao()
+        .getPurchasesByUser(currentUserId)
+        .collectAsState(initial = emptyList())
+
+    val scope   = rememberCoroutineScope()
+    val context = LocalContext.current
+    val gold    = MaterialTheme.colorScheme.primary
+
+    var selectedFilter        by remember { mutableStateOf(0) }
+    var showClearDialog       by remember { mutableStateOf(false) }
+    var showShareDialog       by remember { mutableStateOf(false) }
+    var showGoalDialog        by remember { mutableStateOf(false) }
+    var showCategoryBreakdown by remember { mutableStateOf(false) }
+    var exportLoading         by remember { mutableStateOf(false) }
+    var editingPurchase       by remember { mutableStateOf<PurchaseEntity?>(null) }
+
+    val prefs      = remember { context.getSharedPreferences("spendguard_prefs", Context.MODE_PRIVATE) }
+    var weeklyGoal by remember { mutableStateOf(prefs.getFloat("weekly_goal", 0f).toDouble()) }
+    var goalInput  by remember { mutableStateOf(if (weeklyGoal > 0) "%.2f".format(weeklyGoal) else "") }
+
+    val filteredPurchases = when (selectedFilter) {
+        1    -> purchases.filter { !it.wasBlocked }
+        2    -> purchases.filter { it.wasBlocked }
+        else -> purchases
+    }
+
+    val totalBlocked  = purchases.count { it.wasBlocked }
+    val totalApproved = purchases.count { !it.wasBlocked }
+    val savedAmount   = purchases.filter { it.wasBlocked }.sumOf { it.price }
+    val goalProgress  = if (weeklyGoal > 0) (savedAmount / weeklyGoal).coerceIn(0.0, 1.0).toFloat() else 0f
+
+    val categoryBreakdown: Map<SpendingCategory, Double> = remember(purchases) {
+        purchases
+            .filter { !it.wasBlocked }
+            .groupBy { SpendingCategory.fromString(it.category) }
+            .mapValues { (_, list) -> list.sumOf { it.price } }
+            .entries
+            .sortedByDescending { it.value }
+            .associate { it.key to it.value }
+    }
+
+    val jitSuggestion: Pair<SpendingCategory, EducationalResource>? = remember(categoryBreakdown) {
+        val total = categoryBreakdown.values.sum()
+        if (total < JIT_MIN_TOTAL) return@remember null
+        val dominant = categoryBreakdown.entries.firstOrNull { (_, amount) ->
+            (amount / total).toFloat() >= JIT_DOMINANT_THRESHOLD
+        } ?: return@remember null
+        val resource = jitResourceFor(dominant.key) ?: return@remember null
+        dominant.key to resource
+    }
+
+    if (showClearDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearDialog = false },
+            icon  = { Icon(Icons.Outlined.Delete, null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text("Limpar histórico?", fontWeight = FontWeight.Bold) },
+            text  = { Text("Todos os registros serão apagados permanentemente.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        scope.launch { database.purchaseDao().deleteByUser(currentUserId) }
+                        showClearDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text("Limpar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearDialog = false }) { Text("Cancelar") }
+            }
+        )
+    }
+
+    if (showShareDialog) {
+        val shareText = buildShareText(purchases.size, totalBlocked, savedAmount, categoryBreakdown)
+        AlertDialog(
+            onDismissRequest = { showShareDialog = false },
+            icon  = { Icon(Icons.Outlined.Share, null, tint = gold) },
+            title = { Text("Compartilhar resultados", fontWeight = FontWeight.Bold) },
+            text  = {
+                Card(
+                    shape  = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                ) {
+                    Text(
+                        shareText,
+                        modifier = Modifier.padding(16.dp),
+                        style    = MaterialTheme.typography.bodyMedium,
+                        color    = gold,
+                        lineHeight = 22.sp
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, shareText)
+                        }
+                        context.startActivity(Intent.createChooser(intent, "Compartilhar"))
+                        showShareDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = gold, contentColor = Color(0xFF121212))
+                ) { Text("Compartilhar", fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showShareDialog = false }) { Text("Fechar") }
+            }
+        )
+    }
+
+    if (showGoalDialog) {
+        AlertDialog(
+            onDismissRequest = { showGoalDialog = false },
+            icon  = { Icon(Icons.Outlined.TrackChanges, null, tint = gold) },
+            title = { Text("Meta de economia semanal", fontWeight = FontWeight.Bold) },
+            text  = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Defina quanto quer economizar (não gastar em impulsos) por semana:",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    OutlinedTextField(
+                        value         = goalInput,
+                        onValueChange = { goalInput = it },
+                        label         = { Text("Meta em R$") },
+                        prefix        = { Text("R$ ") },
+                        singleLine    = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        colors        = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = gold,
+                            focusedLabelColor  = gold,
+                            cursorColor        = gold
+                        )
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val goal = goalInput.replace(",", ".").toDoubleOrNull() ?: 0.0
+                        weeklyGoal = goal
+                        prefs.edit().putFloat("weekly_goal", goal.toFloat()).apply()
+                        showGoalDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = gold, contentColor = Color(0xFF121212))
+                ) { Text("Salvar", fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showGoalDialog = false }) { Text("Cancelar") }
+            }
+        )
+    }
+
+    editingPurchase?.let { purchaseToEdit ->
+        EditPurchaseDialog(
+            purchase = purchaseToEdit,
+            onDismiss = { editingPurchase = null },
+            onSave    = { newName, newCategory ->
+                scope.launch {
+                    database.purchaseDao().update(purchaseToEdit.copy(itemName = newName, category = newCategory.name))
+                    editingPurchase = null
+                }
+            }
+        )
+    }
+
+    if (purchases.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(Icons.Outlined.Inbox, null,
+                    tint     = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                    modifier = Modifier.size(64.dp))
+                Text(
+                    "Nenhuma análise ainda",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                )
+                Text(
+                    "Use o Guardião para analisar sua próxima compra",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                )
+            }
+        }
+        return
+    }
+
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+
+        item {
+            Row(
+                modifier              = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                SummaryCard(Modifier.weight(1f), "Analisadas",  "${purchases.size}", Icons.Outlined.Analytics,  gold)
+                SummaryCard(Modifier.weight(1f), "Aprovadas",   "$totalApproved",    Icons.Outlined.CheckCircle, Color(0xFF81C784))
+                SummaryCard(Modifier.weight(1f), "Bloqueadas",  "$totalBlocked",     Icons.Outlined.Block,       MaterialTheme.colorScheme.error)
+            }
+        }
+
+        if (savedAmount > 0) {
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 8.dp),
+                    shape  = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Outlined.Savings, null, tint = gold, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                "Você evitou gastar R$ ${"%.2f".format(savedAmount)} em compras bloqueadas",
+                                style      = MaterialTheme.typography.bodySmall,
+                                color      = gold,
+                                fontWeight = FontWeight.Medium,
+                                modifier   = Modifier.weight(1f)
+                            )
+                        }
+
+                        if (weeklyGoal > 0) {
+                            val pct = (goalProgress * 100).roundToInt()
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Row(
+                                    modifier              = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        "Meta semanal: R$ ${"%.2f".format(weeklyGoal)}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = gold.copy(alpha = 0.7f)
+                                    )
+                                    Text(
+                                        "$pct%",
+                                        style      = MaterialTheme.typography.labelSmall,
+                                        color      = if (goalProgress >= 1f) Color(0xFF81C784) else gold.copy(alpha = 0.7f),
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                LinearProgressIndicator(
+                                    progress   = goalProgress,
+                                    modifier   = Modifier.fillMaxWidth().height(6.dp),
+                                    color      = if (goalProgress >= 1f) Color(0xFF81C784) else gold,
+                                    trackColor = gold.copy(alpha = 0.2f)
+                                )
+                                if (goalProgress >= 1f) {
+                                    Row(
+                                        verticalAlignment     = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Icon(Icons.Outlined.EmojiEvents, null, tint = Color(0xFF81C784), modifier = Modifier.size(14.dp))
+                                        Text(
+                                            "Meta atingida — disciplina financeira em ação.",
+                                            style      = MaterialTheme.typography.labelSmall,
+                                            color      = Color(0xFF81C784),
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (categoryBreakdown.isNotEmpty()) {
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 8.dp),
+                    shape  = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            modifier              = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment     = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Outlined.PieChart, null, tint = gold, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    "Gastos por categoria",
+                                    style      = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color      = gold
+                                )
+                            }
+                            TextButton(
+                                onClick        = { showCategoryBreakdown = !showCategoryBreakdown },
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
+                            ) {
+                                Text(
+                                    if (showCategoryBreakdown) "Ocultar" else "Mostrar",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = gold.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+
+                        if (showCategoryBreakdown) {
+                            Spacer(Modifier.height(8.dp))
+                            val totalApprovedAmount = categoryBreakdown.values.sum()
+                            categoryBreakdown.entries.forEach { (category, amount) ->
+                                val fraction = if (totalApprovedAmount > 0) (amount / totalApprovedAmount).toFloat() else 0f
+                                val pctStr   = "%.1f".format(fraction * 100)
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 3.dp)
+                                ) {
+                                    Row(
+                                        modifier              = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment     = Alignment.CenterVertically
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Surface(
+                                                shape    = RoundedCornerShape(4.dp),
+                                                color    = Color(category.color).copy(alpha = 0.2f),
+                                                modifier = Modifier.size(8.dp)
+                                            ) {}
+                                            Spacer(Modifier.width(6.dp))
+                                            Text(
+                                                category.label,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        Text(
+                                            "R$ ${"%.2f".format(amount)} · $pctStr%",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                        )
+                                    }
+                                    Spacer(Modifier.height(3.dp))
+                                    LinearProgressIndicator(
+                                        progress   = fraction,
+                                        modifier   = Modifier.fillMaxWidth().height(4.dp),
+                                        color      = Color(category.color),
+                                        trackColor = Color(category.color).copy(alpha = 0.12f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        jitSuggestion?.let { (dominantCategory, resource) ->
+            item {
+                JitLearningCard(
+                    category = dominantCategory,
+                    resource = resource,
+                    context  = context,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 8.dp)
+                )
+            }
+        }
+
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                listOf("Todas", "Aprovadas", "Bloqueadas").forEachIndexed { index, label ->
+                    FilterChip(
+                        selected = selectedFilter == index,
+                        onClick  = { selectedFilter = index },
+                        label    = { Text(label, fontSize = 12.sp) },
+                        modifier = Modifier.padding(end = 6.dp),
+                        colors   = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.inversePrimary,
+                            selectedLabelColor     = Color(0xFF121212)
+                        )
+                    )
+                }
+            }
+        }
+
+        item {
+            Column(
+                modifier            = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp)
+                    .padding(bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(0.dp)
+            ) {
+                Row(
+                    modifier              = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment     = Alignment.CenterVertically
+                ) {
+                    ActionButton(
+                        icon    = Icons.Outlined.FileDownload,
+                        label   = "Exportar",
+                        tint    = MaterialTheme.colorScheme.onSurfaceVariant,
+                        onClick = {
+                            exportLoading = true
+                            scope.launch {
+                                exportToCsv(context, purchases)
+                                exportLoading = false
+                            }
+                        },
+                        loading = exportLoading
+                    )
+                    ActionButton(
+                        icon    = Icons.Outlined.FileUpload,
+                        label   = "Importar",
+                        tint    = MaterialTheme.colorScheme.onSurfaceVariant,
+                        onClick = onOpenImport
+                    )
+                    ActionButton(
+                        icon    = Icons.Outlined.TrackChanges,
+                        label   = "Meta",
+                        tint    = MaterialTheme.colorScheme.onSurfaceVariant,
+                        onClick = { showGoalDialog = true }
+                    )
+                    ActionButton(
+                        icon    = Icons.Outlined.Share,
+                        label   = "Compartilhar",
+                        tint    = MaterialTheme.colorScheme.onSurfaceVariant,
+                        onClick = { showShareDialog = true }
+                    )
+                    ActionButton(
+                        icon    = Icons.Outlined.DeleteSweep,
+                        label   = "Limpar",
+                        tint    = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+                        onClick = { showClearDialog = true }
+                    )
+                }
+            }
+        }
+
+        items(filteredPurchases, key = { it.id }) { purchase ->
+            Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                PurchaseHistoryCard(
+                    purchase = purchase,
+                    onDelete = { scope.launch { database.purchaseDao().delete(purchase) } },
+                    onEdit   = { editingPurchase = purchase }
+                )
+            }
+        }
+
+        item { Spacer(modifier = Modifier.height(16.dp)) }
+    }
+}
+
+@Composable
+private fun JitLearningCard(
+    category: SpendingCategory,
+    resource: EducationalResource,
+    context: android.content.Context,
+    modifier: Modifier = Modifier
+) {
+    val accentColor = Color(category.color)
+    val gold        = MaterialTheme.colorScheme.primary
+
+    Card(
+        modifier = modifier,
+        shape    = RoundedCornerShape(12.dp),
+        colors   = CardDefaults.cardColors(
+            containerColor = accentColor.copy(alpha = 0.08f)
+        )
+    ) {
+        Column(
+            modifier            = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                verticalAlignment     = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = accentColor.copy(alpha = 0.15f),
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.Outlined.Lightbulb, null,
+                            tint     = accentColor,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Aprendizado no momento certo",
+                        style      = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color      = accentColor
+                    )
+                    Text(
+                        "${category.label} representa seu maior gasto — veja isso:",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
+            }
+
+            Divider(color = accentColor.copy(alpha = 0.15f))
+
+            Text(
+                resource.title,
+                style      = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.ExtraBold,
+                color      = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                "por ${resource.author}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+            )
+            if (resource.description.isNotEmpty()) {
+                Text(
+                    resource.description,
+                    style      = MaterialTheme.typography.bodySmall,
+                    color      = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                    lineHeight = 17.sp,
+                    maxLines   = 3,
+                    overflow   = TextOverflow.Ellipsis
+                )
+            }
+
+            if (resource.link.isNotEmpty()) {
+                Button(
+                    onClick = {
+                        try {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(resource.link)))
+                        } catch (_: Exception) {}
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape    = RoundedCornerShape(8.dp),
+                    colors   = ButtonDefaults.buttonColors(
+                        containerColor = accentColor,
+                        contentColor   = Color.White
+                    ),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp)
+                ) {
+                    Icon(Icons.Outlined.OpenInNew, null, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Acessar conteúdo", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                }
+            }
+        }
+    }
+}
+
+private fun jitResourceFor(category: SpendingCategory): EducationalResource? {
+    val all = EducationLibrary.resources
+    return when (category) {
+        SpendingCategory.ALIMENTACAO  -> all.firstOrNull { it.title.contains("mercado", ignoreCase = true) }
+            ?: all.firstOrNull { it.type == ResourceType.VIDEO }
+        SpendingCategory.LAZER        -> all.firstOrNull { it.title.contains("vida", ignoreCase = true) }
+            ?: all.firstOrNull { it.type == ResourceType.VIDEO }
+        SpendingCategory.VESTUARIO    -> all.firstOrNull { it.title.contains("impulso", ignoreCase = true) }
+            ?: all.firstOrNull { it.title.contains("Psicologia", ignoreCase = true) }
+        SpendingCategory.TECNOLOGIA   -> all.firstOrNull { it.title.contains("carro", ignoreCase = true) }
+            ?: all.firstOrNull { it.type == ResourceType.VIDEO }
+        SpendingCategory.ASSINATURAS  -> all.firstOrNull { it.title.contains("salário", ignoreCase = true) }
+            ?: all.firstOrNull { it.type == ResourceType.VIDEO }
+        SpendingCategory.TRANSPORTE   -> all.firstOrNull { it.title.contains("carro", ignoreCase = true) }
+        SpendingCategory.CASA         -> all.firstOrNull { it.title.contains("imóvel", ignoreCase = true) }
+            ?: all.firstOrNull { it.title.contains("FII", ignoreCase = true) }
+        SpendingCategory.SAUDE        -> all.firstOrNull { it.title.contains("reserva", ignoreCase = true) }
+            ?: all.firstOrNull { it.title.contains("Psicologia", ignoreCase = true) }
+        SpendingCategory.EDUCACAO     -> all.firstOrNull { it.type == ResourceType.CURSO }
+            ?: all.firstOrNull { it.type == ResourceType.LIVRO }
+        SpendingCategory.OUTROS       -> all.firstOrNull { it.title.contains("Homem Mais Rico", ignoreCase = true) }
+            ?: all.firstOrNull { it.type == ResourceType.LIVRO }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditPurchaseDialog(
+    purchase: PurchaseEntity,
+    onDismiss: () -> Unit,
+    onSave: (String, SpendingCategory) -> Unit
+) {
+    var name     by remember { mutableStateOf(purchase.itemName) }
+    var category by remember { mutableStateOf(SpendingCategory.fromString(purchase.category)) }
+    var expanded by remember { mutableStateOf(false) }
+    val gold     = MaterialTheme.colorScheme.primary
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Editar Transação", fontWeight = FontWeight.Bold, color = gold) },
+        text  = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                OutlinedTextField(
+                    value         = name,
+                    onValueChange = { name = it },
+                    label         = { Text("Nome do estabelecimento ou item") },
+                    singleLine    = true,
+                    modifier      = Modifier.fillMaxWidth(),
+                    colors        = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = gold,
+                        focusedLabelColor  = gold,
+                        cursorColor        = gold
+                    )
+                )
+
+                ExposedDropdownMenuBox(
+                    expanded        = expanded,
+                    onExpandedChange = { expanded = !expanded }
+                ) {
+                    OutlinedTextField(
+                        value         = category.label,
+                        onValueChange = {},
+                        readOnly      = true,
+                        label         = { Text("Categoria") },
+                        trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        modifier      = Modifier.menuAnchor().fillMaxWidth(),
+                        colors        = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = gold,
+                            focusedLabelColor  = gold
+                        )
+                    )
+                    ExposedDropdownMenu(
+                        expanded        = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        SpendingCategory.values().forEach { cat ->
+                            DropdownMenuItem(
+                                text    = { Text(cat.label) },
+                                onClick = { category = cat; expanded = false }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onSave(name, category) },
+                colors  = ButtonDefaults.buttonColors(containerColor = gold, contentColor = Color(0xFF121212))
+            ) { Text("Salvar", fontWeight = FontWeight.Bold) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar") }
+        }
+    )
+}
+
+private fun buildShareText(
+    total: Int,
+    blocked: Int,
+    savedAmount: Double,
+    categoryBreakdown: Map<SpendingCategory, Double>
+): String {
+    val approved = total - blocked
+    val sdf   = SimpleDateFormat("MMMM 'de' yyyy", Locale("pt", "BR"))
+    val month = sdf.format(Date()).replaceFirstChar { it.uppercase() }
+    val sb    = StringBuilder()
+    sb.appendLine("SpendGuard — Relatório de Consciência Financeira")
+    sb.appendLine(month)
+    sb.appendLine()
+    sb.appendLine("Compras analisadas: $total")
+    sb.appendLine("Aprovadas conscientemente: $approved")
+    sb.appendLine("Bloqueadas pelo Guardião: $blocked")
+    if (savedAmount > 0) sb.appendLine("Valor protegido: R$ ${"%.2f".format(savedAmount)}")
+    if (categoryBreakdown.isNotEmpty()) {
+        sb.appendLine()
+        sb.appendLine("Onde mais gastei:")
+        categoryBreakdown.entries.take(5).forEach { (cat, amt) ->
+            sb.appendLine("  ${cat.label}: R$ ${"%.2f".format(amt)}")
+        }
+    }
+    sb.appendLine()
+    sb.appendLine("Cada compra analisada é um passo em direção à liberdade financeira.")
+    sb.appendLine()
+    sb.append("SpendGuard — Guarde seu dinheiro com inteligência.")
+    return sb.toString()
+}
+
+private suspend fun exportToCsv(context: Context, purchases: List<PurchaseEntity>) {
+    withContext(Dispatchers.IO) {
+        try {
+            val sdf     = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("pt", "BR"))
+            val sdfFile = SimpleDateFormat("yyyyMMdd_HHmm", Locale("pt", "BR"))
+            val now     = Date()
+
+            val totalBlocked  = purchases.count { it.wasBlocked }
+            val totalApproved = purchases.count { !it.wasBlocked }
+            val totalSaved    = purchases.filter { it.wasBlocked }.sumOf { it.price }
+
+            val categoryTotals = purchases
+                .filter { !it.wasBlocked }
+                .groupBy { SpendingCategory.fromString(it.category) }
+                .mapValues { (_, list) -> list.sumOf { it.price } }
+                .entries
+                .sortedByDescending { it.value }
+
+            val sb = StringBuilder()
+            sb.append("\uFEFF")
+            sb.append("SpendGuard - Relatório de Consciência Financeira\n")
+            sb.append("Gerado em:;${sdf.format(now)}\n")
+            sb.append("Total de registros:;${purchases.size}\n\n")
+            sb.append("RESUMO\n")
+            sb.append("Compras analisadas;${purchases.size}\n")
+            sb.append("Aprovadas;$totalApproved\n")
+            sb.append("Bloqueadas;$totalBlocked\n")
+            sb.append("Valor protegido (R$);${"%.2f".format(totalSaved)}\n\n")
+
+            if (categoryTotals.isNotEmpty()) {
+                sb.append("GASTOS POR CATEGORIA (aprovadas)\n")
+                categoryTotals.forEach { (cat, amt) -> sb.append("${cat.label};${"%.2f".format(amt)}\n") }
+                sb.append("\n")
+            }
+
+            sb.append("REGISTROS DETALHADOS\n")
+            sb.append("Data e Hora;Categoria;Item;Valor (R$);Status;Origem;Justificativa;Tempo de Geladeira (min);Mensagem do Guardião\n")
+            purchases.forEach { p ->
+                val date     = sdf.format(Date(p.timestamp))
+                val category = SpendingCategory.fromString(p.category).label
+                val safeItem = p.itemName.replace(";", ",").replace("\n", " ").trim()
+                val safeJust = p.justification.replace(";", ",").replace("\n", " ").trim()
+                val safeMsg  = p.aiMessage.replace(";", ",").replace("\n", " ").trim()
+                val decision = if (p.wasBlocked) "Bloqueada" else "Aprovada"
+                val origem   = if (p.isImported) "Importado" else "Análise manual"
+                val cooling  = if (p.coolingOffTime > 0) "${p.coolingOffTime}" else "-"
+                sb.append("$date;$category;$safeItem;${"%.2f".format(p.price)};$decision;$origem;$safeJust;$cooling;$safeMsg\n")
+            }
+
+            val fileName = "Relatorio_SpendGuard_${sdfFile.format(now)}.csv"
+            val file = File(context.cacheDir, fileName)
+            file.writeText(sb.toString(), Charsets.UTF_8)
+
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/csv"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                putExtra(Intent.EXTRA_SUBJECT, "Relatório SpendGuard")
+                putExtra(Intent.EXTRA_TEXT, "Aqui está o histórico de análises do SpendGuard gerado em ${sdf.format(now)}.")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(Intent.createChooser(shareIntent, "Exportar relatório"))
+        } catch (_: Exception) { }
+    }
+}
+
+@Composable
+fun ActionButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    tint: androidx.compose.ui.graphics.Color,
+    onClick: () -> Unit,
+    loading: Boolean = false
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+        modifier            = Modifier.width(64.dp)
+    ) {
+        IconButton(onClick = onClick, enabled = !loading, modifier = Modifier.size(40.dp)) {
+            if (loading) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = tint)
+            else Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(20.dp))
+        }
+        Text(label, style = MaterialTheme.typography.labelSmall,
+            color = tint.copy(alpha = if (loading) 0.4f else 0.8f), maxLines = 1, fontSize = 9.sp)
+    }
+}
+
+@Composable
+fun SummaryCard(
+    modifier: Modifier,
+    label: String,
+    value: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    color: Color
+) {
+    Card(
+        modifier = modifier,
+        shape    = RoundedCornerShape(12.dp),
+        colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(
+            modifier            = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
+            Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = color)
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PurchaseHistoryCard(
+    purchase: PurchaseEntity,
+    onDelete: () -> Unit,
+    onEdit: () -> Unit
+) {
+    val gold        = MaterialTheme.colorScheme.primary
+    val isBlocked   = purchase.wasBlocked
+    val accentColor = if (isBlocked) MaterialTheme.colorScheme.error else Color(0xFF81C784)
+    val sdf         = remember { SimpleDateFormat("dd/MM/yyyy 'às' HH:mm", Locale("pt", "BR")) }
+    val category    = remember(purchase.category) { SpendingCategory.fromString(purchase.category) }
+
+    ElevatedCard(shape = RoundedCornerShape(12.dp)) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    if (isBlocked) Icons.Outlined.Block else Icons.Outlined.CheckCircle,
+                    null, tint = accentColor, modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    purchase.itemName,
+                    style      = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier   = Modifier.weight(1f),
+                    maxLines   = 1,
+                    overflow   = TextOverflow.Ellipsis
+                )
+                Text(
+                    "R$ ${"%.2f".format(purchase.price)}",
+                    style      = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color      = gold
+                )
+                IconButton(onClick = onEdit, modifier = Modifier.size(28.dp)) {
+                    Icon(Icons.Outlined.Edit, null,
+                        tint     = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.size(16.dp))
+                }
+                IconButton(onClick = onDelete, modifier = Modifier.size(28.dp)) {
+                    Icon(Icons.Outlined.Delete, null,
+                        tint     = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.size(16.dp))
+                }
+            }
+
+            if (purchase.aiMessage.isNotEmpty()) {
+                Text(
+                    purchase.aiMessage,
+                    style      = MaterialTheme.typography.bodySmall,
+                    color      = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines   = 2,
+                    overflow   = TextOverflow.Ellipsis,
+                    lineHeight = 18.sp
+                )
+            }
+
+            Row(
+                verticalAlignment     = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(Icons.Outlined.Schedule, null,
+                    tint     = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.size(12.dp))
+                Text(
+                    sdf.format(Date(purchase.timestamp)),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                )
+                Surface(shape = RoundedCornerShape(20.dp), color = Color(category.color).copy(alpha = 0.15f)) {
+                    Text(
+                        category.label,
+                        modifier   = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
+                        style      = MaterialTheme.typography.labelSmall,
+                        color      = Color(category.color),
+                        fontWeight = FontWeight.Medium,
+                        fontSize   = 10.sp
+                    )
+                }
+                if (purchase.isImported) {
+                    Surface(shape = RoundedCornerShape(20.dp), color = gold.copy(alpha = 0.08f)) {
+                        Row(modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Outlined.FileUpload, null, tint = gold.copy(alpha = 0.5f), modifier = Modifier.size(9.dp))
+                            Spacer(Modifier.width(2.dp))
+                            Text("Importado", style = MaterialTheme.typography.labelSmall, color = gold.copy(alpha = 0.5f), fontSize = 8.sp)
+                        }
+                    }
+                }
+                if (isBlocked && purchase.coolingOffTime > 0) {
+                    Spacer(Modifier.weight(1f))
+                    Surface(shape = RoundedCornerShape(20.dp), color = accentColor.copy(alpha = 0.1f)) {
+                        Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Outlined.Timer, null, tint = accentColor, modifier = Modifier.size(10.dp))
+                            Spacer(Modifier.width(3.dp))
+                            Text("${purchase.coolingOffTime}min", style = MaterialTheme.typography.labelSmall, color = accentColor)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

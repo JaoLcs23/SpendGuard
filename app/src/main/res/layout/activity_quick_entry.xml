@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/quick_entry_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/widget_background"
+    android:padding="20dp"
+    android:layout_gravity="bottom"
+    android:layout_marginStart="12dp"
+    android:layout_marginEnd="12dp"
+    android:layout_marginBottom="24dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="16dp">
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_notification"
+            android:tint="#FFD700"
+            android:contentDescription="@null" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="Registrar gasto"
+            android:textColor="#FFFFD700"
+            android:textSize="16sp"
+            android:fontFamily="sans-serif-medium" />
+
+        <ImageView
+            android:id="@+id/btn_close"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            android:tint="#66FFFFFF"
+            android:contentDescription="Fechar"
+            android:padding="4dp"
+            android:clickable="true"
+            android:focusable="true" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="14dp"
+        android:weightSum="4">
+
+        <LinearLayout
+            android:id="@+id/chip_food"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="6dp"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@drawable/widget_category_button"
+            android:clickable="true"
+            android:focusable="true">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_widget_food"
+                android:contentDescription="@null" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Comida"
+                android:textColor="#AAFFFFFF"
+                android:textSize="9sp"
+                android:layout_marginTop="2dp"
+                android:fontFamily="sans-serif-medium" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/chip_leisure"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="6dp"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@drawable/widget_category_button"
+            android:clickable="true"
+            android:focusable="true">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_widget_leisure"
+                android:contentDescription="@null" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Lazer"
+                android:textColor="#AAFFFFFF"
+                android:textSize="9sp"
+                android:layout_marginTop="2dp"
+                android:fontFamily="sans-serif-medium" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/chip_clothing"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="6dp"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@drawable/widget_category_button"
+            android:clickable="true"
+            android:focusable="true">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_widget_clothing"
+                android:contentDescription="@null" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Roupa"
+                android:textColor="#AAFFFFFF"
+                android:textSize="9sp"
+                android:layout_marginTop="2dp"
+                android:fontFamily="sans-serif-medium" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/chip_tech"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@drawable/widget_category_button"
+            android:clickable="true"
+            android:focusable="true">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_widget_tech"
+                android:contentDescription="@null" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Tech"
+                android:textColor="#AAFFFFFF"
+                android:textSize="9sp"
+                android:layout_marginTop="2dp"
+                android:fontFamily="sans-serif-medium" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="O que você comprou?"
+        android:textColor="#88FFFFFF"
+        android:textSize="11sp"
+        android:fontFamily="sans-serif"
+        android:layout_marginBottom="6dp" />
+
+    <EditText
+        android:id="@+id/input_item_name"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginBottom="12dp"
+        android:background="@drawable/widget_category_button"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:textColor="#FFFFFFFF"
+        android:textColorHint="#55FFFFFF"
+        android:hint="Ex: hamburguer, camiseta, jogo…"
+        android:textSize="14sp"
+        android:fontFamily="sans-serif"
+        android:inputType="text"
+        android:imeOptions="actionNext"
+        android:maxLines="1"
+        android:singleLine="true" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Valor (R$)"
+        android:textColor="#88FFFFFF"
+        android:textSize="11sp"
+        android:fontFamily="sans-serif"
+        android:layout_marginBottom="6dp" />
+
+    <EditText
+        android:id="@+id/input_value"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginBottom="20dp"
+        android:background="@drawable/widget_category_button"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:textColor="#FFFFFFFF"
+        android:textColorHint="#55FFFFFF"
+        android:hint="0,00"
+        android:textSize="14sp"
+        android:fontFamily="sans-serif-medium"
+        android:inputType="numberDecimal"
+        android:imeOptions="actionDone"
+        android:maxLines="1"
+        android:singleLine="true" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btn_analyze"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:text="Analisar"
+            android:textColor="#FFD700"
+            android:textSize="13sp"
+            android:fontFamily="sans-serif-medium"
+            android:background="@drawable/widget_category_button" />
+
+        <Button
+            android:id="@+id/btn_save"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:text="Salvar compra"
+            android:textColor="#FF121212"
+            android:textSize="13sp"
+            android:fontFamily="sans-serif-medium"
+            android:backgroundTint="#FFD700" />
+
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/text_error"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:textColor="#FFCF6679"
+        android:textSize="12sp"
+        android:fontFamily="sans-serif"
+        android:gravity="center"
+        android:visibility="gone"
+        android:text="" />
+
+</LinearLayout>

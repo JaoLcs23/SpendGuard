@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Tema principal do app -->
+    <style name="Theme.SpendGuard" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!--
+        Tema da QuickEntryActivity — Activity flutuante sobre a tela inicial.
+        windowIsTranslucent faz o launcher aparecer atrás do dim.
+        windowBackground transparent + dim definido no Activity via setDimAmount().
+        windowAnimationStyle define slide-up / slide-down ao abrir/fechar.
+    -->
+    <style name="Theme.SpendGuard.QuickEntry" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:backgroundDimAmount">0.6</item>
+        <item name="android:windowSoftInputMode">adjustResize</item>
+        <item name="android:windowAnimationStyle">@style/QuickEntryAnimation</item>
+    </style>
+
+    <!-- Slide-up ao abrir, slide-down ao fechar -->
+    <style name="QuickEntryAnimation" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@anim/slide_up</item>
+        <item name="android:activityOpenExitAnimation">@android:anim/fade_out</item>
+        <item name="android:activityCloseEnterAnimation">@android:anim/fade_in</item>
+        <item name="android:activityCloseExitAnimation">@anim/slide_down</item>
+    </style>
+
+</resources>
