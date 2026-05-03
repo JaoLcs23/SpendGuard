@@ -44,6 +44,9 @@ interface PurchaseDao {
     @Query("SELECT * FROM purchase_history ORDER BY timestamp DESC")
     fun getAllPurchases(): Flow<List<PurchaseEntity>>
 
+    @Query("SELECT * FROM purchase_history ORDER BY timestamp DESC")
+    suspend fun getAllPurchasesList(): List<PurchaseEntity>
+
     @Query("SELECT * FROM purchase_history WHERE userId = :userId AND wasBlocked = 1 ORDER BY timestamp DESC")
     fun getBlockedPurchasesByUser(userId: String): Flow<List<PurchaseEntity>>
 

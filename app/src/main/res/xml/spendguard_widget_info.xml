@@ -1,24 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Tamanho fixo 4x2 células. resizeMode="none" impede redimensionamento.
+    minWidth/maxResizeWidth iguais garantem tamanho fixo em launchers legados.
+-->
 <appwidget-provider
     xmlns:android="http://schemas.android.com/apk/res/android"
 
-    android:minWidth="148dp"
-    android:minHeight="100dp"
+    android:minWidth="250dp"
+    android:minHeight="120dp"
 
     android:targetCellWidth="4"
     android:targetCellHeight="2"
 
-    android:minResizeWidth="74dp"
-    android:minResizeHeight="100dp"
+    android:minResizeWidth="250dp"
+    android:minResizeHeight="120dp"
 
-    android:maxResizeWidth="370dp"
-    android:maxResizeHeight="220dp"
+    android:maxResizeWidth="250dp"
+    android:maxResizeHeight="120dp"
 
     android:updatePeriodMillis="1800000"
     android:initialLayout="@layout/widget_quick_entry"
     android:previewLayout="@layout/widget_preview"
+    android:previewImage="@mipmap/ic_launcher"
 
     android:description="@string/app_name"
     android:widgetCategory="home_screen"
-    android:widgetFeatures="configuration_optional"
-    android:resizeMode="horizontal|vertical" />
+    android:widgetFeatures="configuration_optional|reconfigurable"
+    android:resizeMode="none" />

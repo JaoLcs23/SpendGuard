@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -57,9 +58,12 @@ fun SimulatorScreen(
     val currentUserId = remember { userRepository.getCurrentUserId() ?: "" }
     val focusManager = LocalFocusManager.current
 
-    var itemName      by remember { mutableStateOf(autoItemName) }
-    var itemPrice     by remember { mutableStateOf(if (autoItemPrice > 0) autoItemPrice.toString() else "") }
-    var justification by remember { mutableStateOf("") }
+    val itemNameState      = rememberSaveable { mutableStateOf(autoItemName) }
+    val itemPriceState     = rememberSaveable { mutableStateOf(if (autoItemPrice > 0) autoItemPrice.toString() else "") }
+    val justificationState = rememberSaveable { mutableStateOf("") }
+    var itemName      by itemNameState
+    var itemPrice     by itemPriceState
+    var justification by justificationState
 
     var isLoading by remember { mutableStateOf(false) }
     var errorMsg  by remember { mutableStateOf<String?>(null) }
@@ -238,7 +242,7 @@ fun SimulatorScreen(
                         }
 
                     } catch (e: Exception) {
-                        errorMsg = "Erro na análise: ${e.message}. Tente novamente."
+                        errorMsg = "Não foi possível concluir a análise. Verifique sua conexão e tente novamente."
                     } finally {
                         isLoading = false
                     }
@@ -388,6 +392,22 @@ fun SimulatorScreen(
                         }
                     }
                 }
+            }
+
+            OutlinedButton(
+                onClick = {
+                    itemName      = ""
+                    itemPrice     = ""
+                    justification = ""
+                    result        = null
+                    errorMsg      = null
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Icon(Icons.Outlined.Refresh, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Nova análise", fontWeight = FontWeight.Bold)
             }
         }
 

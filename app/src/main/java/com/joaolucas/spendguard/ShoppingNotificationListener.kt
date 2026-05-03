@@ -17,19 +17,10 @@ import kotlinx.coroutines.launch
 class ShoppingNotificationListener : NotificationListenerService() {
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val notifCounter = java.util.concurrent.atomic.AtomicInteger(
+        (System.currentTimeMillis() % Int.MAX_VALUE).toInt()
+    )
 
-    /**
-     * CORREÇÃO DE SEGURANÇA (Issue #10):
-     * Substituído mutableSetOf() simples por um LRU-Set com limite de 500 entradas.
-     *
-     * O set original crescia indefinidamente durante toda a vida do serviço.
-     * Em dispositivos com volume alto de notificações (ex: apps de banco ativos),
-     * isso causava OutOfMemoryError após horas de uso contínuo.
-     *
-     * A implementação abaixo mantém as 500 chaves mais recentes e descarta
-     * automaticamente as mais antigas (FIFO via LinkedHashSet), garantindo
-     * comportamento correto sem pressão de memória.
-     */
     private val processedKeys: MutableSet<String> = object : LinkedHashSet<String>(512) {
         private val maxSize = 500
         override fun add(element: String): Boolean {
@@ -207,7 +198,7 @@ class ShoppingNotificationListener : NotificationListenerService() {
 
     private fun showShoppingNotification(store: String, itemName: String, price: Double) {
         val nm        = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        val notifId   = System.currentTimeMillis().toInt()
+        val notifId   = notifCounter.incrementAndGet()
         val priceText = if (price > 0) "R$ ${"%.2f".format(price)}" else "Valor não identificado"
 
         createShoppingChannel(nm)
@@ -247,7 +238,7 @@ class ShoppingNotificationListener : NotificationListenerService() {
 
     private fun showPixNotification(bank: String, recipient: String, amount: Double, rawText: String) {
         val nm         = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        val notifId    = System.currentTimeMillis().toInt()
+        val notifId    = notifCounter.incrementAndGet()
         val amountText = if (amount > 0) "R$ ${"%.2f".format(amount)}" else "Valor não identificado"
 
         createPixChannel(nm)

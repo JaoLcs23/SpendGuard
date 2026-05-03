@@ -1,19 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
-
+<!--
+    Layout de preview exibido na galeria de widgets do launcher.
+    Usa dados fictícios para mostrar a aparência final.
+    <View> não é permitido em RemoteViews — divisor substituído por <TextView>.
+-->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="280dp"
     android:layout_height="140dp"
     android:orientation="vertical"
     android:background="@drawable/widget_background"
-    android:padding="16dp">
+    android:clipToOutline="true"
+    android:padding="14dp">
 
+    <!-- Header -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:layout_marginBottom="8dp">
+        android:layout_marginBottom="6dp">
 
         <ImageView
             android:layout_width="14dp"
@@ -43,12 +49,14 @@
 
     </LinearLayout>
 
+    <!-- Stats: economizados | gastos | bloqueadas -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical">
 
+        <!-- Economizados -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -60,20 +68,48 @@
                 android:layout_height="wrap_content"
                 android:text="R$ 247"
                 android:textColor="#FFD700"
-                android:textSize="26sp"
+                android:textSize="20sp"
                 android:fontFamily="sans-serif-black"
                 android:includeFontPadding="false" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="economizados esta semana"
-                android:textColor="#88FFFFFF"
-                android:textSize="9sp"
+                android:text="economizados"
+                android:textColor="#77FFFFFF"
+                android:textSize="8sp"
                 android:fontFamily="sans-serif" />
 
         </LinearLayout>
 
+        <!-- Gastos -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center_horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="R$ 89"
+                android:textColor="#CC81C784"
+                android:textSize="20sp"
+                android:fontFamily="sans-serif-black"
+                android:includeFontPadding="false" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="gastos"
+                android:textColor="#55FFFFFF"
+                android:textSize="8sp"
+                android:fontFamily="sans-serif" />
+
+        </LinearLayout>
+
+        <!-- Bloqueadas -->
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -85,7 +121,7 @@
                 android:layout_height="wrap_content"
                 android:text="3"
                 android:textColor="#CCFF5555"
-                android:textSize="20sp"
+                android:textSize="18sp"
                 android:fontFamily="sans-serif-black"
                 android:includeFontPadding="false" />
 
@@ -93,15 +129,16 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="bloqueadas"
-                android:textColor="#66FFFFFF"
-                android:textSize="9sp"
+                android:textColor="#55FFFFFF"
+                android:textSize="8sp"
                 android:fontFamily="sans-serif" />
 
         </LinearLayout>
 
     </LinearLayout>
 
-    <View
+    <!-- Divider -->
+    <TextView
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:layout_marginTop="8dp"
@@ -118,6 +155,7 @@
         android:fontFamily="sans-serif-medium"
         android:letterSpacing="0.08" />
 
+    <!-- Category buttons com emoji (sem ImageView — preview não precisa de assets) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -129,10 +167,10 @@
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
+            android:layout_marginEnd="3dp"
             android:orientation="vertical"
             android:gravity="center"
-            android:background="#14FFD700"
-            android:layout_marginEnd="3dp">
+            android:background="#14FFD700">
 
             <TextView
                 android:layout_width="wrap_content"
@@ -155,10 +193,10 @@
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
+            android:layout_marginEnd="3dp"
             android:orientation="vertical"
             android:gravity="center"
-            android:background="#14FFD700"
-            android:layout_marginEnd="3dp">
+            android:background="#14FFD700">
 
             <TextView
                 android:layout_width="wrap_content"
@@ -181,10 +219,10 @@
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
+            android:layout_marginEnd="3dp"
             android:orientation="vertical"
             android:gravity="center"
-            android:background="#14FFD700"
-            android:layout_marginEnd="3dp">
+            android:background="#14FFD700">
 
             <TextView
                 android:layout_width="wrap_content"

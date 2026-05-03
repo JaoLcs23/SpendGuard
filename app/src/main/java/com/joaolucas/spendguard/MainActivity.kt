@@ -40,14 +40,20 @@ enum class AppScreen { SPLASH, ONBOARDING, AUTH, MAIN }
 @OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
 
-    private val pendingDeepLink     = MutableStateFlow<Uri?>(null)
-    private val pendingReevaluation = MutableStateFlow<String?>(null)
+    private val pendingDeepLink      = MutableStateFlow<Uri?>(null)
+    private val pendingReevaluation  = MutableStateFlow<String?>(null)
+    private val pendingWidgetItem    = MutableStateFlow<String?>(null)
+    private val pendingWidgetPrice   = MutableStateFlow<Double>(0.0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         intent?.data?.let { pendingDeepLink.value = it }
         intent?.getStringExtra("reavaliar_item")?.let { pendingReevaluation.value = it }
+        intent?.getStringExtra("auto_item_name")?.takeIf { it.isNotEmpty() }?.let {
+            pendingWidgetItem.value  = it
+            pendingWidgetPrice.value = intent?.getDoubleExtra("auto_item_price", 0.0) ?: 0.0
+        }
 
         enableEdgeToEdge()
         setContent {
@@ -130,6 +136,8 @@ class MainActivity : ComponentActivity() {
                         AppScreen.MAIN       -> MainScreen(
                             userRepository      = userRepository,
                             pendingReevaluation = pendingReevaluation,
+                            pendingWidgetItem    = pendingWidgetItem,
+                            pendingWidgetPrice   = pendingWidgetPrice,
                             themeManager        = themeManager,
                             onSignOut           = { screen = AppScreen.AUTH }
                         )
@@ -144,6 +152,10 @@ class MainActivity : ComponentActivity() {
         setIntent(intent)
         intent.data?.let { pendingDeepLink.value = it }
         intent.getStringExtra("reavaliar_item")?.let { pendingReevaluation.value = it }
+        intent.getStringExtra("auto_item_name")?.takeIf { it.isNotEmpty() }?.let {
+            pendingWidgetItem.value  = it
+            pendingWidgetPrice.value = intent.getDoubleExtra("auto_item_price", 0.0)
+        }
     }
 }
 
@@ -205,6 +217,8 @@ fun SplashScreen() {
 fun MainScreen(
     userRepository: UserRepository,
     pendingReevaluation: MutableStateFlow<String?>,
+    pendingWidgetItem: MutableStateFlow<String?>,
+    pendingWidgetPrice: MutableStateFlow<Double>,
     themeManager: ThemeManager,
     onSignOut: () -> Unit
 ) {
@@ -225,6 +239,20 @@ fun MainScreen(
     var autoItemName  by remember { mutableStateOf("") }
     var autoItemPrice by remember { mutableStateOf(0.0) }
     var isPix         by remember { mutableStateOf(false) }
+
+    // Handle "Analisar" button from widget — navigates to Guardião with pre-filled fields
+    val widgetItem  by pendingWidgetItem.collectAsState()
+    val widgetPrice by pendingWidgetPrice.collectAsState()
+    LaunchedEffect(widgetItem) {
+        val name = widgetItem ?: return@LaunchedEffect
+        if (name.isNotEmpty()) {
+            autoItemName  = name
+            autoItemPrice = widgetPrice
+            currentView   = ViewState.SIMULATOR
+            pendingWidgetItem.value  = null
+            pendingWidgetPrice.value = 0.0
+        }
+    }
 
     val itemToReevaluate by pendingReevaluation.collectAsState()
     var showJustificationField  by remember { mutableStateOf(false) }
@@ -278,18 +306,33 @@ fun MainScreen(
                                     val price   = lastPurchase?.price ?: 0.0
                                     val profile = ProfileManager(context).load()
                                     val analysis = geminiService.analyzeImpulse(itemToReevaluate!!, price, newJustification, profile)
-                                    database.purchaseDao().insert(
-                                        PurchaseEntity(
-                                            userId        = userRepository.getCurrentUserId() ?: "",
-                                            itemName      = itemToReevaluate!!,
-                                            price         = price,
-                                            justification = newJustification,
-                                            wasBlocked    = !analysis.allowed,
-                                            aiMessage     = analysis.message,
-                                            coolingOffTime = analysis.coolingOffTime,
-                                            category      = analysis.category
+                                    // Update the existing purchase instead of inserting a new one
+                                    // to avoid duplicates in history
+                                    val existingId = lastPurchase?.id ?: 0
+                                    if (existingId > 0) {
+                                        database.purchaseDao().update(
+                                            lastPurchase!!.copy(
+                                                justification  = newJustification,
+                                                wasBlocked     = !analysis.allowed,
+                                                aiMessage      = analysis.message,
+                                                coolingOffTime = analysis.coolingOffTime,
+                                                category       = analysis.category
+                                            )
                                         )
-                                    )
+                                    } else {
+                                        database.purchaseDao().insert(
+                                            PurchaseEntity(
+                                                userId        = userRepository.getCurrentUserId() ?: "",
+                                                itemName      = itemToReevaluate!!,
+                                                price         = price,
+                                                justification = newJustification,
+                                                wasBlocked    = !analysis.allowed,
+                                                aiMessage     = analysis.message,
+                                                coolingOffTime = analysis.coolingOffTime,
+                                                category      = analysis.category
+                                            )
+                                        )
+                                    }
                                     pendingReevaluation.value = null
                                     showJustificationField    = false
                                     newJustification          = ""
@@ -427,12 +470,8 @@ fun MainScreen(
                     achievementsManager = achievementsManager,
                     onBack              = { currentView = ViewState.DASHBOARD }
                 )
-                ViewState.CHALLENGE -> ChallengeScreen(
-                    challengeManager = challengeManager,
-                    isPro            = proManager.isPro.value,
-                    onBack           = { currentView = ViewState.DASHBOARD },
-                    onShowPaywall    = { currentView = ViewState.PAYWALL }
-                )
+                // CHALLENGE removed per user request — feature not needed
+                ViewState.CHALLENGE -> { currentView = ViewState.DASHBOARD }
                 ViewState.IMPORT -> ImportScreen(
                     database       = database,
                     userRepository = userRepository,

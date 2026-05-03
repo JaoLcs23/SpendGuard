@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material3.*
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
@@ -57,6 +58,7 @@ fun HistoryScreen(
     var showCategoryBreakdown by remember { mutableStateOf(false) }
     var exportLoading         by remember { mutableStateOf(false) }
     var editingPurchase       by remember { mutableStateOf<PurchaseEntity?>(null) }
+    var expandedCardId        by remember { mutableStateOf(-1) }
 
     val prefs      = remember { context.getSharedPreferences("spendguard_prefs", Context.MODE_PRIVATE) }
     var weeklyGoal by remember { mutableStateOf(prefs.getFloat("weekly_goal", 0f).toDouble()) }
@@ -207,30 +209,6 @@ fun HistoryScreen(
                 }
             }
         )
-    }
-
-    if (purchases.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Icon(Icons.Outlined.Inbox, null,
-                    tint     = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                    modifier = Modifier.size(64.dp))
-                Text(
-                    "Nenhuma análise ainda",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                )
-                Text(
-                    "Use o Guardião para analisar sua próxima compra",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                )
-            }
-        }
-        return
     }
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -496,13 +474,47 @@ fun HistoryScreen(
             }
         }
 
-        items(filteredPurchases, key = { it.id }) { purchase ->
-            Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
-                PurchaseHistoryCard(
-                    purchase = purchase,
-                    onDelete = { scope.launch { database.purchaseDao().delete(purchase) } },
-                    onEdit   = { editingPurchase = purchase }
-                )
+        if (filteredPurchases.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 48.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(Icons.Outlined.Inbox, null,
+                            tint     = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            modifier = Modifier.size(64.dp))
+                        Text(
+                            "Nenhuma análise ainda",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        )
+                        Text(
+                            "Use o Guardião para analisar sua próxima compra",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                        )
+                    }
+                }
+            }
+        } else {
+            items(filteredPurchases, key = { it.id }) { purchase ->
+                Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                    PurchaseHistoryCard(
+                        purchase    = purchase,
+                        isExpanded  = expandedCardId == purchase.id,
+                        onToggle    = {
+                            expandedCardId = if (expandedCardId == purchase.id) -1 else purchase.id
+                        },
+                        onDelete    = { scope.launch { database.purchaseDao().delete(purchase) } },
+                        onEdit      = { editingPurchase = purchase }
+                    )
+                }
             }
         }
 
@@ -855,9 +867,11 @@ fun SummaryCard(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PurchaseHistoryCard(
-    purchase: PurchaseEntity,
-    onDelete: () -> Unit,
-    onEdit: () -> Unit
+    purchase:   PurchaseEntity,
+    isExpanded: Boolean,
+    onToggle:   () -> Unit,
+    onDelete:   () -> Unit,
+    onEdit:     () -> Unit
 ) {
     val gold        = MaterialTheme.colorScheme.primary
     val isBlocked   = purchase.wasBlocked
@@ -865,8 +879,12 @@ fun PurchaseHistoryCard(
     val sdf         = remember { SimpleDateFormat("dd/MM/yyyy 'às' HH:mm", Locale("pt", "BR")) }
     val category    = remember(purchase.category) { SpendingCategory.fromString(purchase.category) }
 
-    ElevatedCard(shape = RoundedCornerShape(12.dp)) {
+    ElevatedCard(
+        shape   = RoundedCornerShape(12.dp),
+        onClick = onToggle
+    ) {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     if (isBlocked) Icons.Outlined.Block else Icons.Outlined.CheckCircle,
@@ -887,26 +905,11 @@ fun PurchaseHistoryCard(
                     fontWeight = FontWeight.Bold,
                     color      = gold
                 )
-                IconButton(onClick = onEdit, modifier = Modifier.size(28.dp)) {
-                    Icon(Icons.Outlined.Edit, null,
-                        tint     = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.size(16.dp))
-                }
-                IconButton(onClick = onDelete, modifier = Modifier.size(28.dp)) {
-                    Icon(Icons.Outlined.Delete, null,
-                        tint     = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.size(16.dp))
-                }
-            }
-
-            if (purchase.aiMessage.isNotEmpty()) {
-                Text(
-                    purchase.aiMessage,
-                    style      = MaterialTheme.typography.bodySmall,
-                    color      = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines   = 2,
-                    overflow   = TextOverflow.Ellipsis,
-                    lineHeight = 18.sp
+                Icon(
+                    if (isExpanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                    contentDescription = if (isExpanded) "Recolher" else "Expandir",
+                    tint     = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.size(20.dp).padding(start = 4.dp)
                 )
             }
 
@@ -932,23 +935,85 @@ fun PurchaseHistoryCard(
                         fontSize   = 10.sp
                     )
                 }
-                if (purchase.isImported) {
-                    Surface(shape = RoundedCornerShape(20.dp), color = gold.copy(alpha = 0.08f)) {
-                        Row(modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Outlined.FileUpload, null, tint = gold.copy(alpha = 0.5f), modifier = Modifier.size(9.dp))
-                            Spacer(Modifier.width(2.dp))
-                            Text("Importado", style = MaterialTheme.typography.labelSmall, color = gold.copy(alpha = 0.5f), fontSize = 8.sp)
-                        }
-                    }
-                }
                 if (isBlocked && purchase.coolingOffTime > 0) {
-                    Spacer(Modifier.weight(1f))
                     Surface(shape = RoundedCornerShape(20.dp), color = accentColor.copy(alpha = 0.1f)) {
                         Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Outlined.Timer, null, tint = accentColor, modifier = Modifier.size(10.dp))
                             Spacer(Modifier.width(3.dp))
                             Text("${purchase.coolingOffTime}min", style = MaterialTheme.typography.labelSmall, color = accentColor)
                         }
+                    }
+                }
+            }
+
+            if (isExpanded) {
+                Divider(
+                    modifier  = Modifier.padding(vertical = 4.dp),
+                    color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                )
+
+                if (purchase.justification.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            "Justificativa",
+                            style      = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color      = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        )
+                        Text(
+                            purchase.justification,
+                            style      = MaterialTheme.typography.bodySmall,
+                            color      = MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = 18.sp
+                        )
+                    }
+                }
+
+                if (purchase.aiMessage.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            "Veredicto do Guardião",
+                            style      = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color      = accentColor.copy(alpha = 0.8f)
+                        )
+                        Text(
+                            purchase.aiMessage,
+                            style      = MaterialTheme.typography.bodySmall,
+                            color      = MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = 18.sp
+                        )
+                    }
+                }
+
+                if (purchase.isImported) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Icon(Icons.Outlined.FileUpload, null, tint = gold.copy(alpha = 0.5f), modifier = Modifier.size(12.dp))
+                        Text("Importado via CSV", style = MaterialTheme.typography.labelSmall, color = gold.copy(alpha = 0.5f))
+                    }
+                }
+
+                Row(
+                    modifier              = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment     = Alignment.CenterVertically
+                ) {
+                    TextButton(
+                        onClick        = onEdit,
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Icon(Icons.Outlined.Edit, null, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Editar", style = MaterialTheme.typography.labelSmall)
+                    }
+                    TextButton(
+                        onClick        = onDelete,
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                        colors         = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Icon(Icons.Outlined.Delete, null, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Excluir", style = MaterialTheme.typography.labelSmall)
                     }
                 }
             }

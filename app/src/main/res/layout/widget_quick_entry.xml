@@ -6,8 +6,10 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@drawable/widget_background"
+    android:clipToOutline="true"
     android:padding="14dp">
 
+    <!-- Header row: logo + date -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -46,12 +48,14 @@
 
     </LinearLayout>
 
+    <!-- Stats row: economizados | gastos | bloqueadas -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical">
 
+        <!-- Economizados -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -64,20 +68,49 @@
                 android:layout_height="wrap_content"
                 android:text="R$ 0"
                 android:textColor="#FFD700"
-                android:textSize="24sp"
+                android:textSize="20sp"
                 android:fontFamily="sans-serif-black"
                 android:includeFontPadding="false" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="economizados esta semana"
+                android:text="economizados"
                 android:textColor="#77FFFFFF"
-                android:textSize="9sp"
+                android:textSize="8sp"
                 android:fontFamily="sans-serif" />
 
         </LinearLayout>
 
+        <!-- Gastos -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center_horizontal">
+
+            <TextView
+                android:id="@+id/widget_spent"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="R$ 0"
+                android:textColor="#CC81C784"
+                android:textSize="20sp"
+                android:fontFamily="sans-serif-black"
+                android:includeFontPadding="false" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="gastos"
+                android:textColor="#55FFFFFF"
+                android:textSize="8sp"
+                android:fontFamily="sans-serif" />
+
+        </LinearLayout>
+
+        <!-- Bloqueadas -->
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -99,14 +132,15 @@
                 android:layout_height="wrap_content"
                 android:text="bloqueadas"
                 android:textColor="#55FFFFFF"
-                android:textSize="9sp"
+                android:textSize="8sp"
                 android:fontFamily="sans-serif" />
 
         </LinearLayout>
 
     </LinearLayout>
 
-    <View
+    <!-- Divider (TextView usado pois View não é permitido em RemoteViews) -->
+    <TextView
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:layout_marginTop="8dp"
@@ -123,6 +157,7 @@
         android:fontFamily="sans-serif-medium"
         android:letterSpacing="0.08" />
 
+    <!-- Category buttons -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"

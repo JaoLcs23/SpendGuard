@@ -10,7 +10,6 @@ import android.widget.RemoteViews
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -32,17 +31,7 @@ class SpendGuardWidget : AppWidgetProvider() {
     private fun updateWidget(context: Context, manager: AppWidgetManager, widgetId: Int) {
         widgetScope.launch {
             val database = SpendGuardDatabase.getDatabase(context)
-            val all      = database.purchaseDao().getAllPurchases()
-            val snapshot = mutableListOf<PurchaseEntity>()
-
-            val job = launch {
-                all.collect { list ->
-                    snapshot.clear()
-                    snapshot.addAll(list)
-                }
-            }
-            delay(300)
-            job.cancel()
+            val snapshot = database.purchaseDao().getAllPurchasesList()
 
             val cal = Calendar.getInstance().apply {
                 set(Calendar.DAY_OF_WEEK, firstDayOfWeek)
@@ -58,9 +47,15 @@ class SpendGuardWidget : AppWidgetProvider() {
 
             val views = RemoteViews(context.packageName, R.layout.widget_quick_entry)
 
+            val spent = thisWeek.filter { !it.wasBlocked }.sumOf { it.price }
+
             views.setTextViewText(
                 R.id.widget_saved,
-                if (saved > 0) "R$ ${"%.0f".format(saved)}" else "R$ 0"
+                if (saved > 0) "R$ ${"%.2f".format(saved)}" else "R$ 0,00"
+            )
+            views.setTextViewText(
+                R.id.widget_spent,
+                "R$ ${"%.2f".format(spent)}"
             )
             views.setTextViewText(R.id.widget_blocked_count, "$blocked")
             views.setTextViewText(
