@@ -12,6 +12,11 @@ import com.android.billingclient.api.Purchase
 import com.android.billingclient.api.PurchasesUpdatedListener
 import com.android.billingclient.api.QueryProductDetailsParams
 import com.android.billingclient.api.QueryPurchasesParams
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -19,7 +24,8 @@ import kotlin.coroutines.resume
 
 class BillingManager(
     private val context: Context,
-    private val proManager: ProManager
+    private val proManager: ProManager,
+    private val userRepository: UserRepository? = null
 ) : PurchasesUpdatedListener {
 
     companion object {
@@ -35,6 +41,7 @@ class BillingManager(
         object UserCancelled : BillingState()
     }
 
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val _billingState = MutableStateFlow<BillingState>(BillingState.Idle)
     val billingState: StateFlow<BillingState> = _billingState
 
@@ -62,6 +69,7 @@ class BillingManager(
 
     fun disconnect() {
         billingClient.endConnection()
+        scope.cancel()
     }
 
     suspend fun launchBillingFlow(activity: Activity, productId: String) {
@@ -132,8 +140,9 @@ class BillingManager(
                 _billingState.value = BillingState.UserCancelled
             }
             else -> {
+                android.util.Log.w("BillingManager", "Billing error ${result.responseCode}: ${result.debugMessage}")
                 _billingState.value = BillingState.Error(
-                    "Erro no pagamento (${result.responseCode}): ${result.debugMessage}"
+                    "Não foi possível processar o pagamento. Tente novamente."
                 )
             }
         }
@@ -166,6 +175,12 @@ class BillingManager(
         }
         proManager.activatePro(plan)
         _billingState.value = BillingState.Success(plan)
+
+        userRepository?.let { repo ->
+            scope.launch {
+                try { repo.activatePro(planType = plan) } catch (_: Exception) {}
+            }
+        }
     }
 
     fun restorePurchases() {

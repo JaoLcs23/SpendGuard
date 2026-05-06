@@ -88,6 +88,12 @@ class ReferralManager(
 
         val referredId = client.auth.currentUserOrNull()?.id ?: return
 
+        val myCode = getMyCode()
+        if (myCode != null && sanitizedCode == myCode) {
+            _referralState.value = ReferralState.Invalid
+            return
+        }
+
         _referralState.value = ReferralState.Loading
 
         try {
@@ -108,7 +114,7 @@ class ReferralManager(
                     referrerId  = referrer.id,
                     referredId  = referredId,
                     code        = sanitizedCode,
-                    rewardGiven = true
+                    rewardGiven = false
                 )
             )
 

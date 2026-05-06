@@ -15,6 +15,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -148,8 +149,9 @@ class QuickEntryActivity : Activity() {
         scope.launch {
             try {
                 val database   = SpendGuardDatabase.getDatabase(applicationContext)
-                val prefs      = getSharedPreferences("spendguard_prefs", MODE_PRIVATE)
-                val userId     = prefs.getString("last_user_id", "") ?: ""
+                val userId     = try {
+                    SupabaseClient.client.auth.currentUserOrNull()?.id ?: ""
+                } catch (_: Exception) { "" }
 
                 val purchase = PurchaseEntity(
                     userId        = userId,

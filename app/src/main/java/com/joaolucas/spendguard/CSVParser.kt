@@ -20,9 +20,17 @@ object CsvParser {
         val errors: List<String>
     )
 
+    private const val MAX_FILE_SIZE_CHARS = 5_000_000
+    private const val MAX_LINES           = 50_000
+
     fun parse(csvContent: String): ParseResult {
+        if (csvContent.length > MAX_FILE_SIZE_CHARS)
+            return ParseResult(emptyList(), "Erro", 0, 0, listOf("Arquivo muito grande (máx. 5 MB)"))
+
         val lines = csvContent.lines().map { it.trim() }.filter { it.isNotBlank() }
         if (lines.isEmpty()) return ParseResult(emptyList(), "Vazio", 0, 0, listOf("Arquivo vazio"))
+        if (lines.size > MAX_LINES)
+            return ParseResult(emptyList(), "Erro", lines.size, 0, listOf("Arquivo com muitas linhas (máx. $MAX_LINES)"))
 
         val sampleLines = lines.take(15)
         val sep = if (sampleLines.sumOf { it.count { c -> c == ';' } } > sampleLines.sumOf { it.count { c -> c == ',' } }) ';' else ','
@@ -67,7 +75,8 @@ object CsvParser {
                 if (cols.size <= maxOf(iDate, iVal)) { skipped++; continue }
 
                 val dateStr = cols.getOrNull(iDate)?.trim() ?: ""
-                val descStr = cols.getOrNull(iDesc)?.trim()?.ifBlank { "Transação" } ?: "Transação"
+                val descStr = (cols.getOrNull(iDesc)?.trim()?.ifBlank { "Transação" } ?: "Transação")
+                    .take(200)
                 val valStr = cols.getOrNull(iVal)?.trim() ?: ""
 
                 val descLower = descStr.lowercase()
