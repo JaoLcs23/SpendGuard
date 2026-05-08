@@ -32,6 +32,7 @@ fun SettingsScreen(
     billingManager: BillingManager,
     userRepository: UserRepository,
     themeManager: ThemeManager,
+    goalManager: GoalManager,
     onSignOut: () -> Unit,
     onOpenOnboarding: () -> Unit
 ) {
@@ -47,6 +48,9 @@ fun SettingsScreen(
     var showPaywall            by remember { mutableStateOf(false) }
     var showProfileScreen      by remember { mutableStateOf(false) }
     var showThemeDialog        by remember { mutableStateOf(false) }
+    var showGoalDialog         by remember { mutableStateOf(false) }
+    var goalInput              by remember { mutableStateOf(goalManager.getMonthlyGoal().let { if (it > 0) "%.0f".format(it) else "" }) }
+    val currentGoal            by goalManager.monthlyGoal.collectAsState()
 
     val currentUser by userRepository.currentUser.collectAsState()
     val isPro       by proManager.isPro.collectAsState()
@@ -495,6 +499,17 @@ fun SettingsScreen(
         }
 
         Spacer(Modifier.height(4.dp))
+        SettingsSectionTitle("Meta de Economia", Icons.Outlined.TrackChanges)
+        SettingsCard {
+            SettingsItem(
+                icon     = Icons.Outlined.TrackChanges,
+                title    = "Meta mensal de economia",
+                subtitle = if (currentGoal > 0) "R$ ${"%.2f".format(currentGoal)} por mês" else "Nenhuma meta definida",
+                onClick  = { showGoalDialog = true }
+            )
+        }
+
+        Spacer(Modifier.height(4.dp))
         SettingsSectionTitle("Privacidade e Dados", Icons.Outlined.Security)
         SettingsCard {
             SettingsItem(
@@ -583,6 +598,48 @@ fun SettingsScreen(
             onDone         = { showProfileScreen = false }
         )
         return
+    }
+
+    if (showGoalDialog) {
+        AlertDialog(
+            onDismissRequest = { showGoalDialog = false },
+            icon  = { Icon(Icons.Outlined.TrackChanges, null, tint = MaterialTheme.colorScheme.primary) },
+            title = { Text("Meta mensal", fontWeight = FontWeight.Bold) },
+            text  = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Defina quanto quer economizar por mês. Essa meta aparece no dashboard como barra de progresso.")
+                    OutlinedTextField(
+                        value = goalInput,
+                        onValueChange = { goalInput = it.filter { c -> c.isDigit() || c == '.' } },
+                        label = { Text("Meta em R$") },
+                        prefix = { Text("R$ ") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (currentGoal > 0) {
+                        TextButton(onClick = { goalManager.clearGoal(); goalInput = ""; showGoalDialog = false }) {
+                            Text("Remover meta", color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val value = goalInput.toDoubleOrNull()
+                        if (value != null && value > 0) {
+                            goalManager.setMonthlyGoal(value)
+                            showGoalDialog = false
+                        }
+                    },
+                    shape = RoundedCornerShape(12.dp)
+                ) { Text("Salvar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showGoalDialog = false }) { Text("Cancelar") }
+            }
+        )
     }
 
     if (showPaywall) {

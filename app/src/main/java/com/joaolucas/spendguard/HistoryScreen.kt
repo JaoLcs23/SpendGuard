@@ -1,5 +1,6 @@
 package com.joaolucas.spendguard
 
+import android.app.DatePickerDialog
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -35,6 +36,14 @@ import kotlin.math.roundToInt
 private const val JIT_DOMINANT_THRESHOLD = 0.40f
 private const val JIT_MIN_TOTAL = 30.0
 
+enum class PeriodFilter(val label: String) {
+    ALL("Todo o período"),
+    TODAY("Hoje"),
+    WEEK("Esta semana"),
+    MONTH("Este mês"),
+    CUSTOM("Personalizado")
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
@@ -52,6 +61,10 @@ fun HistoryScreen(
     val gold    = MaterialTheme.colorScheme.primary
 
     var selectedFilter        by remember { mutableStateOf(0) }
+    var selectedPeriod        by remember { mutableStateOf(PeriodFilter.ALL) }
+    var customStart           by remember { mutableStateOf<Long?>(null) }
+    var customEnd             by remember { mutableStateOf<Long?>(null) }
+    var showPeriodMenu        by remember { mutableStateOf(false) }
     var showClearDialog       by remember { mutableStateOf(false) }
     var showShareDialog       by remember { mutableStateOf(false) }
     var showGoalDialog        by remember { mutableStateOf(false) }
@@ -64,10 +77,40 @@ fun HistoryScreen(
     var weeklyGoal by remember { mutableStateOf(prefs.getFloat("weekly_goal", 0f).toDouble()) }
     var goalInput  by remember { mutableStateOf(if (weeklyGoal > 0) "%.2f".format(weeklyGoal) else "") }
 
+    val periodFiltered = remember(purchases, selectedPeriod, customStart, customEnd) {
+        val now = System.currentTimeMillis()
+        val cal = Calendar.getInstance()
+        when (selectedPeriod) {
+            PeriodFilter.ALL    -> purchases
+            PeriodFilter.TODAY  -> {
+                cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0)
+                cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0)
+                purchases.filter { it.timestamp >= cal.timeInMillis }
+            }
+            PeriodFilter.WEEK   -> {
+                cal.set(Calendar.DAY_OF_WEEK, cal.firstDayOfWeek)
+                cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0)
+                cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0)
+                purchases.filter { it.timestamp >= cal.timeInMillis }
+            }
+            PeriodFilter.MONTH  -> {
+                cal.set(Calendar.DAY_OF_MONTH, 1)
+                cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0)
+                cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0)
+                purchases.filter { it.timestamp >= cal.timeInMillis }
+            }
+            PeriodFilter.CUSTOM -> {
+                val s = customStart ?: 0L
+                val e = (customEnd ?: now) + 86_400_000L
+                purchases.filter { it.timestamp in s..e }
+            }
+        }
+    }
+
     val filteredPurchases = when (selectedFilter) {
-        1    -> purchases.filter { !it.wasBlocked }
-        2    -> purchases.filter { it.wasBlocked }
-        else -> purchases
+        1    -> periodFiltered.filter { !it.wasBlocked }
+        2    -> periodFiltered.filter { it.wasBlocked }
+        else -> periodFiltered
     }
 
     val totalBlocked  = purchases.count { it.wasBlocked }
@@ -210,6 +253,8 @@ fun HistoryScreen(
             }
         )
     }
+
+    // (empty-state is now shown inline inside the LazyColumn, not as early-return)
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
 
@@ -398,24 +443,137 @@ fun HistoryScreen(
         }
 
         item {
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
                     .padding(bottom = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                listOf("Todas", "Aprovadas", "Bloqueadas").forEachIndexed { index, label ->
-                    FilterChip(
-                        selected = selectedFilter == index,
-                        onClick  = { selectedFilter = index },
-                        label    = { Text(label, fontSize = 12.sp) },
-                        modifier = Modifier.padding(end = 6.dp),
-                        colors   = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.inversePrimary,
-                            selectedLabelColor     = Color(0xFF121212)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row {
+                        listOf("Todas", "Aprovadas", "Bloqueadas").forEachIndexed { index, label ->
+                            FilterChip(
+                                selected = selectedFilter == index,
+                                onClick  = { selectedFilter = index },
+                                label    = { Text(label, fontSize = 12.sp) },
+                                modifier = Modifier.padding(end = 6.dp),
+                                colors   = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.inversePrimary,
+                                    selectedLabelColor     = Color(0xFF121212)
+                                )
+                            )
+                        }
+                    }
+                    Box {
+                        FilterChip(
+                            selected = selectedPeriod != PeriodFilter.ALL,
+                            onClick  = { showPeriodMenu = true },
+                            label    = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Outlined.CalendarMonth, null, modifier = Modifier.size(14.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        if (selectedPeriod == PeriodFilter.ALL) "Período" else selectedPeriod.label,
+                                        fontSize = 12.sp,
+                                        maxLines = 1
+                                    )
+                                }
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.inversePrimary,
+                                selectedLabelColor     = Color(0xFF121212)
+                            )
                         )
-                    )
+                        DropdownMenu(
+                            expanded         = showPeriodMenu,
+                            onDismissRequest = { showPeriodMenu = false }
+                        ) {
+                            PeriodFilter.values().forEach { period ->
+                                DropdownMenuItem(
+                                    text = { Text(period.label, fontSize = 14.sp) },
+                                    onClick = {
+                                        if (period == PeriodFilter.CUSTOM) {
+                                            showPeriodMenu = false
+                                            val calNow = Calendar.getInstance()
+                                            DatePickerDialog(
+                                                context,
+                                                { _, y, m, d ->
+                                                    val start = Calendar.getInstance()
+                                                    start.set(y, m, d, 0, 0, 0)
+                                                    customStart = start.timeInMillis
+                                                    DatePickerDialog(
+                                                        context,
+                                                        { _, y2, m2, d2 ->
+                                                            val end = Calendar.getInstance()
+                                                            end.set(y2, m2, d2, 23, 59, 59)
+                                                            customEnd = end.timeInMillis
+                                                            selectedPeriod = PeriodFilter.CUSTOM
+                                                        },
+                                                        calNow.get(Calendar.YEAR),
+                                                        calNow.get(Calendar.MONTH),
+                                                        calNow.get(Calendar.DAY_OF_MONTH)
+                                                    ).show()
+                                                },
+                                                calNow.get(Calendar.YEAR),
+                                                calNow.get(Calendar.MONTH),
+                                                calNow.get(Calendar.DAY_OF_MONTH)
+                                            ).show()
+                                        } else {
+                                            selectedPeriod = period
+                                            customStart = null
+                                            customEnd   = null
+                                            showPeriodMenu = false
+                                        }
+                                    },
+                                    leadingIcon = {
+                                        if (selectedPeriod == period) {
+                                            Icon(Icons.Outlined.Check, null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(16.dp))
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (selectedPeriod == PeriodFilter.CUSTOM && customStart != null) {
+                    val sdf = remember { SimpleDateFormat("dd/MM/yyyy", Locale("pt","BR")) }
+                    val rangeText = if (customEnd != null)
+                        "${sdf.format(Date(customStart!!))} → ${sdf.format(Date(customEnd!!))}"
+                    else
+                        "A partir de ${sdf.format(Date(customStart!!))}"
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Outlined.DateRange, null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(rangeText,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary)
+                            Spacer(Modifier.weight(1f))
+                            TextButton(
+                                onClick = {
+                                    selectedPeriod = PeriodFilter.ALL
+                                    customStart = null; customEnd = null
+                                },
+                                contentPadding = PaddingValues(0.dp)
+                            ) { Text("Limpar", fontSize = 11.sp) }
+                        }
+                    }
                 }
             }
         }
@@ -885,6 +1043,7 @@ fun PurchaseHistoryCard(
     ) {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
 
+            // ── Header row (always visible) ──────────────────────────────
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     if (isBlocked) Icons.Outlined.Block else Icons.Outlined.CheckCircle,
@@ -913,6 +1072,7 @@ fun PurchaseHistoryCard(
                 )
             }
 
+            // ── Tags row (always visible) ────────────────────────────────
             Row(
                 verticalAlignment     = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -946,6 +1106,7 @@ fun PurchaseHistoryCard(
                 }
             }
 
+            // ── Expanded content ─────────────────────────────────────────
             if (isExpanded) {
                 Divider(
                     modifier  = Modifier.padding(vertical = 4.dp),

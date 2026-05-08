@@ -51,10 +51,25 @@ class CoolingOffWorker(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val reevalIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            putExtra("reavaliar_item", itemName)
+            putExtra("auto_item_name", itemName)
+        }
+        val reevalPending = PendingIntent.getActivity(
+            context,
+            notificationId + 5000,
+            reevalIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         val notification = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-            .setContentTitle("Período de reflexão concluído")
-            .setContentText("A emoção baixou. Ainda deseja comprar '$itemName'? Toque para reavaliar.")
+            .setContentTitle("Período de reflexão concluído ✓")
+            .setContentText("A emoção baixou. Ainda quer comprar '$itemName'?")
+            .setStyle(NotificationCompat.BigTextStyle()
+                .bigText("A emoção baixou. Você passou pelo teste do tempo. Ainda quer comprar '$itemName'? Analise novamente com a cabeça fria."))
+            .addAction(android.R.drawable.ic_menu_rotate, "Analisar novamente", reevalPending)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)

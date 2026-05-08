@@ -64,7 +64,8 @@ enum class ViewState {
     CHALLENGE,
     IMPORT,
     PAYWALL,
-    LIBRARY
+    LIBRARY,
+    INTENTIONS
 }
 
 @Serializable
@@ -78,4 +79,21 @@ data class PixInfo(
     val recipient: String,
     val amount: Double,
     val description: String = ""
+)
+
+enum class EmotionalState(val label: String, val emoji: String) {
+    WELL("Bem", "😊"),
+    TIRED("Cansado", "😴"),
+    STRESSED("Estressado", "😤"),
+    EXCITED("Animado", "🤩")
+}
+
+@Serializable
+data class WeeklyInsight(
+    val fiis: String = "",
+    val savings: String = "",
+    val stocks: String = "",
+    val motivationalMessage: String = "",
+    val summary: String = "",
+    val generatedAt: Long = 0L
 )

@@ -139,7 +139,7 @@ class BillingManager(
             BillingClient.BillingResponseCode.USER_CANCELED -> {
                 _billingState.value = BillingState.UserCancelled
             }
-            else -> {
+            else -> { 
                 android.util.Log.w("BillingManager", "Billing error ${result.responseCode}: ${result.debugMessage}")
                 _billingState.value = BillingState.Error(
                     "Não foi possível processar o pagamento. Tente novamente."

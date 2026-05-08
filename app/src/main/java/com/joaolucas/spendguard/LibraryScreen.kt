@@ -171,7 +171,6 @@ private fun ExploreTab(
 
     var searchQuery        by remember { mutableStateOf("") }
     var selectedType       by remember { mutableStateOf<ResourceType?>(null) }
-    // FIX 1: savingId was used but never declared — added declaration here
     var savingId           by remember { mutableStateOf<String?>(null) }
     var saveMessage        by remember { mutableStateOf<Pair<String, Boolean>?>(null) }
 
@@ -188,57 +187,7 @@ private fun ExploreTab(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        if (!isPro) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color    = if (savesLeft > 0)
-                    MaterialTheme.colorScheme.surfaceVariant
-                else
-                    MaterialTheme.colorScheme.errorContainer
-            ) {
-                Row(
-                    modifier              = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment     = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(
-                        verticalAlignment     = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(
-                            Icons.Outlined.Bookmark,
-                            contentDescription = null,
-                            tint     = if (savesLeft > 0) gold else MaterialTheme.colorScheme.onErrorContainer,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Text(
-                            if (savesLeft > 0)
-                                "$savesLeft salvamento${if (savesLeft == 1) "" else "s"} restante${if (savesLeft == 1) "" else "s"} esta semana"
-                            else
-                                "Limite semanal atingido",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (savesLeft > 0)
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            else
-                                MaterialTheme.colorScheme.onErrorContainer
-                        )
-                    }
-                    if (savesLeft == 0) {
-                        TextButton(
-                            onClick        = onShowPaywall,
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                "Upgrade Pro",
-                                style      = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color      = gold
-                            )
-                        }
-                    }
-                }
-            }
-        }
+
 
         OutlinedTextField(
             value         = searchQuery,
@@ -377,12 +326,8 @@ private fun ExploreTab(
                     CatalogResourceCard(
                         resource  = resource,
                         isSaving  = savingId == resource.title,
-                        canSave   = isPro || proManager.canSaveToLibrary(),
+                        canSave   = true,
                         onSave    = {
-                            if (!proManager.canSaveToLibrary() && !isPro) {
-                                onShowPaywall()
-                                return@CatalogResourceCard
-                            }
                             savingId = resource.title
                             scope.launch {
                                 try {
@@ -397,7 +342,6 @@ private fun ExploreTab(
                                     )
                                     val saved = educationRepository.saveToLibrary(remote)
                                     if (saved) {
-                                        proManager.registerLibrarySave()
                                         onResourceSaved(remote)
                                         saveMessage = "\"${resource.title}\" salvo na sua biblioteca!" to true
                                     } else {
@@ -587,8 +531,6 @@ fun CatalogResourceCard(
     val context   = LocalContext.current
     val gold      = MaterialTheme.colorScheme.primary
     val typeColor = typeAccentColorLocal(resource.type)
-    // FIX 3: The original signature had isExpanded + onExpandClick as params, but the body
-    // re-declared isExpanded internally, causing a conflict. Kept internal state only.
     var isExpanded by remember { mutableStateOf(false) }
 
     ElevatedCard(

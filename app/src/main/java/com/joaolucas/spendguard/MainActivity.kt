@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -47,6 +48,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
 
         intent?.data?.let { pendingDeepLink.value = it }
         intent?.getStringExtra("reavaliar_item")?.let { pendingReevaluation.value = it }
@@ -233,14 +235,17 @@ fun MainScreen(
     val billingManager      = remember { BillingManager(context, proManager) }
     val achievementsManager = remember { AchievementsManager(context) }
     val referralManager     = remember { ReferralManager(context, proManager) }
-    val challengeManager    = remember { ChallengeManager(context) }
-    val educationRepository = remember { EducationRepository(SupabaseClient.client.postgrest) }
+    val challengeManager       = remember { ChallengeManager(context) }
+    val educationRepository    = remember { EducationRepository(SupabaseClient.client.postgrest) }
+    val streakManager          = remember { StreakManager(context) }
+    val goalManager            = remember { GoalManager(context) }
+    val intentionsManager      = remember { IntentionsManager(context) }
+    val weeklyInsightManager   = remember { WeeklyInsightManager(context) }
 
     var autoItemName  by remember { mutableStateOf("") }
     var autoItemPrice by remember { mutableStateOf(0.0) }
     var isPix         by remember { mutableStateOf(false) }
 
-    // Handle "Analisar" button from widget — navigates to Guardião with pre-filled fields
     val widgetItem  by pendingWidgetItem.collectAsState()
     val widgetPrice by pendingWidgetPrice.collectAsState()
     LaunchedEffect(widgetItem) {
@@ -306,8 +311,6 @@ fun MainScreen(
                                     val price   = lastPurchase?.price ?: 0.0
                                     val profile = ProfileManager(context).load()
                                     val analysis = geminiService.analyzeImpulse(itemToReevaluate!!, price, newJustification, profile)
-                                    // Update the existing purchase instead of inserting a new one
-                                    // to avoid duplicates in history
                                     val existingId = lastPurchase?.id ?: 0
                                     if (existingId > 0) {
                                         database.purchaseDao().update(
@@ -441,16 +444,21 @@ fun MainScreen(
                     achievementsManager = achievementsManager,
                     referralManager     = referralManager,
                     challengeManager    = challengeManager,
+                    streakManager       = streakManager,
+                    intentionsManager   = intentionsManager,
                     autoItemName        = autoItemName,
                     autoItemPrice       = autoItemPrice,
                     isPix               = isPix
                 )
                 ViewState.DASHBOARD -> DashboardScreen(
-                    database            = database,
-                    userRepository      = userRepository,
-                    achievementsManager = achievementsManager,
-                    challengeManager    = challengeManager,
-                    onNavigate          = { destination -> currentView = destination }
+                    database             = database,
+                    userRepository       = userRepository,
+                    achievementsManager  = achievementsManager,
+                    challengeManager     = challengeManager,
+                    streakManager        = streakManager,
+                    goalManager          = goalManager,
+                    weeklyInsightManager = weeklyInsightManager,
+                    onNavigate           = { destination -> currentView = destination }
                 )
                 ViewState.HISTORY -> HistoryScreen(
                     database       = database,
@@ -463,6 +471,7 @@ fun MainScreen(
                     billingManager   = billingManager,
                     userRepository   = userRepository,
                     themeManager     = themeManager,
+                    goalManager      = goalManager,
                     onSignOut        = onSignOut,
                     onOpenOnboarding = { showOnboardingOverlay = true }
                 )
@@ -470,8 +479,11 @@ fun MainScreen(
                     achievementsManager = achievementsManager,
                     onBack              = { currentView = ViewState.DASHBOARD }
                 )
-                // CHALLENGE removed per user request — feature not needed
                 ViewState.CHALLENGE -> { currentView = ViewState.DASHBOARD }
+                ViewState.INTENTIONS -> IntentionsScreen(
+                    intentionsManager = intentionsManager,
+                    onBack            = { currentView = ViewState.DASHBOARD }
+                )
                 ViewState.IMPORT -> ImportScreen(
                     database       = database,
                     userRepository = userRepository,
@@ -485,11 +497,14 @@ fun MainScreen(
                     onDismiss      = { currentView = ViewState.HISTORY }
                 )
                 else -> DashboardScreen(
-                    database            = database,
-                    userRepository      = userRepository,
-                    achievementsManager = achievementsManager,
-                    challengeManager    = challengeManager,
-                    onNavigate          = { destination -> currentView = destination }
+                    database             = database,
+                    userRepository       = userRepository,
+                    achievementsManager  = achievementsManager,
+                    challengeManager     = challengeManager,
+                    streakManager        = streakManager,
+                    goalManager          = goalManager,
+                    weeklyInsightManager = weeklyInsightManager,
+                    onNavigate           = { destination -> currentView = destination }
                 )
             }
         }

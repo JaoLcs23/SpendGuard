@@ -1,5 +1,9 @@
 package com.joaolucas.spendguard
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -47,6 +51,8 @@ fun SimulatorScreen(
     achievementsManager: AchievementsManager,
     referralManager: ReferralManager,
     challengeManager: ChallengeManager,
+    streakManager: StreakManager,
+    intentionsManager: IntentionsManager,
     autoItemName: String = "",
     autoItemPrice: Double = 0.0,
     isPix: Boolean = false
@@ -68,6 +74,9 @@ fun SimulatorScreen(
     var isLoading by remember { mutableStateOf(false) }
     var errorMsg  by remember { mutableStateOf<String?>(null) }
     var result    by remember { mutableStateOf<InterventionResult?>(null) }
+    var selectedEmotion by remember { mutableStateOf<EmotionalState?>(null) }
+    var showEmotionPicker by remember { mutableStateOf(false) }
+    val currentIntention by intentionsManager.intention.collectAsState()
 
     val gold  = MaterialTheme.colorScheme.primary
     val quote = remember { guardianQuotes.random() }
@@ -109,6 +118,94 @@ fun SimulatorScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 22.sp
                 )
+            }
+        }
+
+        if (currentIntention.isNotEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = gold.copy(alpha = 0.08f))
+            ) {
+                Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
+                    Icon(Icons.Outlined.Lightbulb, null, tint = gold, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Column {
+                        Text("Sua intenção", style = MaterialTheme.typography.labelSmall,
+                            color = gold.copy(alpha = 0.7f), fontWeight = FontWeight.Bold)
+                        Text(currentIntention, style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface, lineHeight = 18.sp)
+                    }
+                }
+            }
+        }
+
+        if (!showEmotionPicker && selectedEmotion == null && result == null) {
+            OutlinedButton(
+                onClick = { showEmotionPicker = true },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Outlined.Mood, null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Como você está agora?", style = MaterialTheme.typography.bodySmall)
+            }
+        }
+
+        if (showEmotionPicker) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Como você está agora?", style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold, color = gold)
+                    Text("Isso ajuda o Guardião a calibrar a análise para seu estado atual.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        EmotionalState.values().forEach { emotion ->
+                            val isSelected = selectedEmotion == emotion
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = {
+                                    selectedEmotion = emotion
+                                    showEmotionPicker = false
+                                },
+                                label = { Text(emotion.label, fontSize = 12.sp) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        selectedEmotion?.let { emotion ->
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = gold.copy(alpha = 0.1f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(emotion.emoji, fontSize = 16.sp)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Você está ${emotion.label.lowercase()}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.weight(1f))
+                    TextButton(onClick = { selectedEmotion = null; showEmotionPicker = false },
+                        contentPadding = PaddingValues(0.dp)) {
+                        Text("Mudar", fontSize = 11.sp)
+                    }
+                }
             }
         }
 
@@ -341,73 +438,82 @@ fun SimulatorScreen(
             val icon        = if (isBlocked) Icons.Outlined.Block else Icons.Outlined.CheckCircle
             val title       = if (isBlocked) "Compra Bloqueada" else "Compra Aprovada"
 
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = accentColor.copy(alpha = 0.1f))
+            AnimatedVisibility(
+                visible = true,
+                enter = fadeIn(tween(300)) + slideInVertically(tween(300)) { it / 2 }
             ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            icon,
-                            contentDescription = null,
-                            tint = accentColor,
-                            modifier = Modifier.size(28.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            title,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = accentColor
-                        )
-                    }
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = accentColor.copy(alpha = 0.1f))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(20.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    icon,
+                                    contentDescription = null,
+                                    tint = accentColor,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    title,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = accentColor
+                                )
+                            }
 
-                    Text(
-                        text = analysis.message,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        lineHeight = 22.sp
-                    )
-
-                    if (isBlocked && analysis.coolingOffTime > 0) {
-                        Divider(color = accentColor.copy(alpha = 0.2f))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Outlined.Timer,
-                                contentDescription = null,
-                                tint = accentColor,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                "Período de reflexão: ${analysis.coolingOffTime / 60} horas",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = accentColor,
-                                fontWeight = FontWeight.Bold
+                                text = analysis.message,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                lineHeight = 22.sp
                             )
+
+                            if (isBlocked && analysis.coolingOffTime > 0) {
+                                Divider(color = accentColor.copy(alpha = 0.2f))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Outlined.Timer,
+                                        contentDescription = null,
+                                        tint = accentColor,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        "Período de reflexão: ${analysis.coolingOffTime / 60} horas",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = accentColor,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
                         }
                     }
-                }
-            }
 
-            OutlinedButton(
-                onClick = {
-                    itemName      = ""
-                    itemPrice     = ""
-                    justification = ""
-                    result        = null
-                    errorMsg      = null
-                },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Icon(Icons.Outlined.Refresh, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Nova análise", fontWeight = FontWeight.Bold)
+                    OutlinedButton(
+                        onClick = {
+                            itemName      = ""
+                            itemPrice     = ""
+                            justification = ""
+                            result        = null
+                            errorMsg      = null
+                            selectedEmotion = null
+                            showEmotionPicker = false
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Icon(Icons.Outlined.Refresh, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Nova análise", fontWeight = FontWeight.Bold)
+                    }
+                }
             }
         }
 

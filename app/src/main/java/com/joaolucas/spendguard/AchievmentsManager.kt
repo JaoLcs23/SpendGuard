@@ -3,6 +3,8 @@ package com.joaolucas.spendguard
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.compose.material.icons.Icons
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Diamond
@@ -29,8 +31,20 @@ import java.util.Calendar
 
 class AchievementsManager(context: Context) {
 
-    private val prefs: SharedPreferences =
+    private val prefs: SharedPreferences = try {
+        val masterKey = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+        EncryptedSharedPreferences.create(
+            context,
+            "spendguard_achievements_enc",
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    } catch (_: Exception) {
         context.getSharedPreferences("spendguard_achievements", Context.MODE_PRIVATE)
+    }
 
     private val _newlyUnlocked = MutableStateFlow<Achievement?>(null)
     val newlyUnlocked: StateFlow<Achievement?> = _newlyUnlocked

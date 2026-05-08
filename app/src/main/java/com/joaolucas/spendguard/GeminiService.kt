@@ -60,7 +60,8 @@ class GeminiService(apiKey: String) {
         item: String,
         price: Double,
         justification: String,
-        userProfile: FinancialProfile = FinancialProfile()
+        userProfile: FinancialProfile = FinancialProfile(),
+        emotionalState: EmotionalState? = null
     ): InterventionResult {
         val safeItem          = sanitize(item)
         val safeJustification = sanitize(justification)
@@ -70,12 +71,22 @@ class GeminiService(apiKey: String) {
             "\n    PERFIL DO USUÁRIO (use para personalizar a análise):\n    $profileContext\n"
         else ""
 
+        val hourlyRate = if (userProfile.monthlyIncome > 0) userProfile.monthlyIncome / 160.0 else 0.0
+        val workHours  = if (hourlyRate > 0) "%.1f".format(price / hourlyRate) else null
+        val workSection = if (workHours != null)
+            "\n    CONTEXTO DE TEMPO: Este item custa aproximadamente $workHours horas de trabalho do usuário. Mencione isso na análise de forma reflexiva.\n"
+        else ""
+
+        val emotionalSection = if (emotionalState != null)
+            "\n    ESTADO EMOCIONAL ATUAL DO USUÁRIO: ${emotionalState.label}. Leve isso em conta — decisões em estado emocional negativo tendem a ser arrependidas.\n"
+        else ""
+
         val categoryOptions = SpendingCategory.geminiOptions
 
         val prompt = """
     Você é o 'SpendGuard', um guardião financeiro rigoroso, porém empático.
     Sua missão é proteger o usuário de compras por impulso e validar decisões financeiras racionais.
-$profileSection
+$profileSection$workSection$emotionalSection
     DADOS DA TENTATIVA DE COMPRA:
     - Item: "$safeItem"
     - Valor: R$ ${"%.2f".format(price)}
@@ -118,6 +129,46 @@ $profileSection
         return result.copy(
             category = SpendingCategory.fromString(result.category).name
         )
+    }
+
+    suspend fun generateWeeklyInsight(
+        purchases: List<PurchaseEntity>,
+        userProfile: FinancialProfile = FinancialProfile()
+    ): WeeklyInsight {
+        val blocked  = purchases.filter { it.wasBlocked }
+        val approved = purchases.filter { !it.wasBlocked }
+        val saved    = blocked.sumOf { it.price }
+        val spent    = approved.sumOf { it.price }
+        val topCategory = blocked.groupingBy { it.category }.eachCount().maxByOrNull { it.value }?.key ?: "N/A"
+        val profileCtx = userProfile.toPromptContext()
+
+        val prompt = """
+Você é o SpendGuard, assistente financeiro pessoal.
+Esta é a análise semanal do usuário.
+
+DADOS DA SEMANA:
+- Compras bloqueadas: ${blocked.size} (R$ ${"%.2f".format(saved)} protegidos)
+- Compras aprovadas: ${approved.size} (R$ ${"%.2f".format(spent)} gastos)
+- Categoria de maior risco: $topCategory
+${if (profileCtx.isNotEmpty()) "- Perfil: $profileCtx" else ""}
+
+Gere um insight semanal personalizado, honesto e encorajador em JSON:
+{
+  "summary": "2-3 frases sobre a semana do usuário, mencionando padrões reais",
+  "fiis": "projeção FII com setor, yield e renda passiva potencial se o valor protegido fosse investido",
+  "savings": "comparativo Tesouro Selic vs Poupança para o valor protegido em 1 ano",
+  "stocks": "projeção de ações com setor resiliente e retorno médio histórico",
+  "motivationalMessage": "uma frase de impacto curta sobre a conquista da semana"
+}
+
+Retorne APENAS JSON válido, sem markdown.
+        """.trimIndent()
+
+        val response = withTimeout(API_TIMEOUT_MS) { generativeModel.generateContent(prompt) }
+        val text = response.text ?: throw Exception("Resposta vazia")
+        val cleanJson = Regex("\\{.*\\}", RegexOption.DOT_MATCHES_ALL).find(text)?.value
+            ?: throw Exception("JSON não encontrado")
+        return jsonParser.decodeFromString<WeeklyInsight>(cleanJson).copy(generatedAt = System.currentTimeMillis())
     }
 
     suspend fun extractPurchaseInfo(notificationText: String): PurchaseInfo? {
