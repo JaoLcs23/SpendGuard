@@ -1,6 +1,7 @@
 package com.joaolucas.spendguard
 
 import com.google.ai.client.generativeai.GenerativeModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 
@@ -16,7 +17,8 @@ class GeminiService(apiKey: String) {
         isLenient = true
     }
 
-    private val API_TIMEOUT_MS   = 15_000L
+    private val API_TIMEOUT_MS   = 20_000L
+    private val MAX_RETRIES      = 2
     private val MAX_INPUT_LENGTH = 500
 
     private fun sanitize(input: String): String =
@@ -44,10 +46,15 @@ class GeminiService(apiKey: String) {
             {"fiis": "string", "savings": "string", "stocks": "string", "motivationalMessage": "string"}
         """.trimIndent()
 
-        val response = withTimeout(API_TIMEOUT_MS) {
-            generativeModel.generateContent(prompt)
+        var lastEx: Exception? = null
+        var genResponse: com.google.ai.client.generativeai.type.GenerateContentResponse? = null
+        for (attempt in 0..MAX_RETRIES) {
+            try {
+                genResponse = withTimeout(API_TIMEOUT_MS) { generativeModel.generateContent(prompt) }
+                break
+            } catch (e: Exception) { lastEx = e; if (attempt < MAX_RETRIES) delay(1_000L * (attempt + 1)) }
         }
-        val text = response.text ?: throw Exception("Resposta vazia da API")
+        val text = genResponse?.text ?: throw (lastEx ?: Exception("Resposta vazia da API"))
 
         val regex = Regex("\\{.*\\}", RegexOption.DOT_MATCHES_ALL)
         val match = regex.find(text)

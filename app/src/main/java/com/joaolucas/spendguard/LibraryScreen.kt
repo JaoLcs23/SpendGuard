@@ -251,7 +251,10 @@ private fun ExploreTab(
                         selectedContainerColor = typeAccentColorLocal(type).copy(alpha = 0.2f),
                         selectedLabelColor     = typeAccentColorLocal(type)
                     ),
-                    border = FilterChipDefaults.filterChipBorder()
+                    border = FilterChipDefaults.filterChipBorder(
+                        enabled  = true,
+                        selected = selectedType == type
+                    )
                 )
             }
         }
@@ -443,7 +446,10 @@ private fun MyLibraryTab(
                         selectedContainerColor = gold,
                         selectedLabelColor     = Color(0xFF121212)
                     ),
-                    border = FilterChipDefaults.filterChipBorder()
+                    border = FilterChipDefaults.filterChipBorder(
+                        enabled  = true,
+                        selected = selectedFilter == index
+                    )
                 )
             }
         }

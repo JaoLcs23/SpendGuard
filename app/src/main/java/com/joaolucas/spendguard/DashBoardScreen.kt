@@ -8,6 +8,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -340,7 +342,7 @@ fun DashboardScreen(
                     modifier  = Modifier.weight(1f),
                     title     = "Biblioteca",
                     subtitle  = "Explorar conteúdos",
-                    icon      = Icons.Outlined.MenuBook,
+                    icon      = Icons.AutoMirrored.Outlined.MenuBook,
                     color     = Color(0xFF7F77DD),
                     onClick   = { onNavigate(ViewState.LIBRARY) }
                 )
@@ -353,7 +355,7 @@ fun DashboardScreen(
                     modifier  = Modifier.weight(1f),
                     title     = "Histórico",
                     subtitle  = "Ver análises",
-                    icon      = Icons.Outlined.ReceiptLong,
+                    icon      = Icons.AutoMirrored.Outlined.ReceiptLong,
                     color     = Color(0xFF81C784),
                     onClick   = { onNavigate(ViewState.HISTORY) }
                 )
@@ -417,8 +419,6 @@ fun DashboardScreen(
                 Icon(Icons.Outlined.ChevronRight, null, tint = gold.copy(alpha = 0.5f))
             }
         }
-
-        // Desafio 30 dias removido a pedido do usuário
 
         Spacer(Modifier.height(16.dp))
     }

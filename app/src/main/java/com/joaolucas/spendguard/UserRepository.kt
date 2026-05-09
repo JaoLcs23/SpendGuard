@@ -19,16 +19,11 @@ class UserRepository {
     private val _isLoggedIn = MutableStateFlow(false)
     val isLoggedIn: StateFlow<Boolean> = _isLoggedIn
 
-    /**
-     * Processa o callback OAuth do Google via deep link.
-     * Utiliza extração manual de tokens compatível com Supabase 2.7.1.
-     */
     suspend fun handleGoogleCallback(url: String) {
         try {
             val uri      = android.net.Uri.parse(url)
             val fragment = uri.fragment ?: return
 
-            // Extrai os parâmetros do fragmento de forma segura
             val params = fragment.split("&").associate {
                 val key = it.substringBefore("=")
                 val value = it.substringAfter("=")
@@ -39,7 +34,6 @@ class UserRepository {
             val refreshToken = params["refresh_token"]
 
             if (accessToken != null && refreshToken != null) {
-                // Importa o token usando a API do Supabase 2.7.1
                 client.auth.importAuthToken(
                     accessToken = accessToken,
                     refreshToken = refreshToken
@@ -121,6 +115,7 @@ class UserRepository {
             _isLoggedIn.value  = false
         }
     }
+
 
     suspend fun loadUserProfile() {
         try {

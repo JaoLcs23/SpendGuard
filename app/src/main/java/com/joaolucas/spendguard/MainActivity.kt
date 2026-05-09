@@ -49,6 +49,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        Thread.setDefaultUncaughtExceptionHandler { _, throwable ->
+            android.util.Log.e("SpendGuard", "Uncaught exception", throwable)
+        }
+
 
         intent?.data?.let { pendingDeepLink.value = it }
         intent?.getStringExtra("reavaliar_item")?.let { pendingReevaluation.value = it }

@@ -105,7 +105,6 @@ fun ProfileScreen(
             }
 
             ProfileSection(title = "Principal objetivo", icon = Icons.Outlined.Flag) {
-                // Alterado de .entries para .values()
                 FinancialGoal.values().forEach { goal ->
                     ProfileOptionRow(
                         label    = goal.label,
@@ -120,7 +119,6 @@ fun ProfileScreen(
                 icon     = Icons.Outlined.ShoppingCart,
                 subtitle = "Selecione todas que se aplicam"
             ) {
-                // Alterado de SpendingCategory.entries para ProfileSpendingCategory.values()
                 ProfileSpendingCategory.values().forEach { cat ->
                     val checked = cat.name in selectedCategories
                     ProfileCheckRow(
