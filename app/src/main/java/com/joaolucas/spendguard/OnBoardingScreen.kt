@@ -68,7 +68,8 @@ fun OnboardingScreen(isReplay: Boolean = false, onFinish: () -> Unit) {
             description = "Seu guardião financeiro pessoal. Inteligência Artificial aplicada a cada compra para que você gaste com consciência e construa a liberdade financeira que merece.",
             highlights  = listOf(
                 Icons.Outlined.Psychology       to "IA analisa cada compra em tempo real",
-                Icons.Outlined.MenuBook         to "Biblioteca de educação financeira curada",
+                Icons.Outlined.LocalFireDepartment to "Streak de dias sem impulso",
+                Icons.Outlined.TrackChanges     to "Meta mensal de economia personalizada",
                 Icons.Outlined.EmojiEvents      to "Conquistas que recompensam disciplina"
             )
         ),
@@ -78,10 +79,10 @@ fun OnboardingScreen(isReplay: Boolean = false, onFinish: () -> Unit) {
             title       = "Guardião Anti-Impulso",
             description = "Descreva o que quer comprar. O Guardião analisa sua justificativa com IA e separa necessidade real de impulso — antes que o dinheiro saia da sua conta.",
             highlights  = listOf(
-                Icons.Outlined.Edit             to "Descreva o item e o motivo da compra",
-                Icons.Outlined.AutoAwesome      to "Gemini AI avalia se é impulso ou necessidade",
-                Icons.Outlined.Timer            to "Tempo de reflexão quando bloqueado",
-                Icons.Outlined.WifiOff          to "Análise offline disponível sem internet"
+                Icons.Outlined.Mood             to "Check-in emocional antes de cada análise",
+                Icons.Outlined.AutoAwesome      to "IA considera emoção e horas de trabalho no veredicto",
+                Icons.Outlined.Timer            to "Reflexão de 24h a 1 semana conforme o valor",
+                Icons.Outlined.Lightbulb        to "Sua intenção financeira aparece antes de cada análise"
             )
         ),
 
@@ -94,7 +95,7 @@ fun OnboardingScreen(isReplay: Boolean = false, onFinish: () -> Unit) {
                 Icons.Outlined.Explore          to "Catálogo completo com busca e filtros por tipo",
                 Icons.Outlined.BookmarkAdd      to "Salve conteúdos na sua biblioteca pessoal",
                 Icons.Outlined.Lightbulb        to "Sugestões no histórico quando você mais precisa",
-                Icons.Outlined.WorkspacePremium to "3 salvamentos por semana no plano gratuito"
+                Icons.Outlined.Lock             to "Acesso completo e ilimitado — gratuito para sempre"
             )
         ),
 
@@ -119,7 +120,7 @@ fun OnboardingScreen(isReplay: Boolean = false, onFinish: () -> Unit) {
                 Icons.Outlined.TouchApp         to "Um toque na categoria já abre o Guardião",
                 Icons.Outlined.Category         to "Comida, Lazer, Roupa e Tecnologia de atalho",
                 Icons.Outlined.Savings          to "Resumo semanal de economia direto na tela inicial",
-                Icons.Outlined.OpenWith         to "Redimensionável: 2×2 até 4×3"
+                Icons.Outlined.Widgets          to "Tamanho fixo 4×2 — limpo e informativo"
             )
         ),
 
@@ -128,10 +129,10 @@ fun OnboardingScreen(isReplay: Boolean = false, onFinish: () -> Unit) {
             title       = "Histórico e Conquistas",
             description = "Acompanhe sua evolução, desbloqueie conquistas por disciplina financeira e exporte seu histórico completo.",
             highlights  = listOf(
-                Icons.Outlined.Analytics        to "Resumo de compras analisadas, aprovadas e bloqueadas",
-                Icons.Outlined.MilitaryTech     to "Desafio 30 dias sem impulso",
-                Icons.Outlined.TrackChanges     to "Meta semanal de economia",
-                Icons.Outlined.FileDownload     to "Exportar histórico em CSV"
+                Icons.Outlined.BarChart         to "Gráfico de gastos dos últimos 6 meses",
+                Icons.Outlined.DateRange        to "Filtro por período personalizado com calendário",
+                Icons.Outlined.MilitaryTech     to "Conquistas por marcos de disciplina financeira",
+                Icons.Outlined.FileDownload     to "Exporte sua planilha financeira com segurança biométrica"
             )
         ),
 
@@ -405,20 +406,22 @@ fun ProComparisonPageContent(scrollState: ScrollState) {
     val green = Color(0xFF81C784)
 
     val rows = listOf(
-        FeatureRow(Icons.Outlined.Psychology,          "Análises com Guardião",        "5/semana",      "Ilimitadas"),
-        FeatureRow(Icons.Outlined.WifiOff,             "Análise offline",               "Sim",           "Sim"),
-        FeatureRow(Icons.Outlined.MenuBook,            "Biblioteca financeira",          "Sim",           "Sim"),
-        FeatureRow(Icons.Outlined.BookmarkAdd,         "Salvar na biblioteca",           "3/semana",      "Ilimitado"),
-        FeatureRow(Icons.Outlined.Widgets,             "Widget de registro rápido",      "Sim",           "Sim"),
-        FeatureRow(Icons.Outlined.History,             "Histórico de análises",          "Sim",           "Sim"),
-        FeatureRow(Icons.Outlined.EmojiEvents,         "Conquistas e streaks",           "10 conquistas", "13 + exclusivas"),
-        FeatureRow(Icons.Outlined.FileDownload,        "Exportar CSV",                   "Sim",           "Sim"),
-        FeatureRow(Icons.Outlined.Share,               "Compartilhamento",               "Sim",           "Sim"),
-        FeatureRow(Icons.Outlined.Shield,              "Modo Estrito",                   "—",             "Sim"),
-        FeatureRow(Icons.Outlined.MilitaryTech,        "Desafio 30 dias",                "—",             "Sim"),
-        FeatureRow(Icons.Outlined.FileUpload,          "Importar extrato bancário",      "—",             "Sim"),
-        FeatureRow(Icons.Outlined.NotificationsActive, "Detecção automática de compras", "—",             "Sim"),
-        FeatureRow(Icons.Outlined.CardGiftcard,        "Programa de indicação",          "—",             "7 dias grátis")
+        FeatureRow(Icons.Outlined.Psychology,          "Análises com Guardião",        "5/semana",  "Ilimitadas"),
+        FeatureRow(Icons.Outlined.Mood,                "Check-in emocional",            "Sim",       "Sim"),
+        FeatureRow(Icons.Outlined.Lightbulb,           "Intenções financeiras",         "Sim",       "Sim"),
+        FeatureRow(Icons.Outlined.LocalFireDepartment, "Streak anti-impulso",           "Sim",       "Sim"),
+        FeatureRow(Icons.Outlined.TrackChanges,        "Meta mensal de economia",       "Sim",       "Sim"),
+        FeatureRow(Icons.Outlined.Widgets,             "Widget de registro rápido",     "Sim",       "Sim"),
+        FeatureRow(Icons.Outlined.MenuBook,            "Biblioteca financeira",         "Completa",  "Completa"),
+        FeatureRow(Icons.Outlined.History,             "Histórico de análises",         "Sim",       "Sim"),
+        FeatureRow(Icons.Outlined.EmojiEvents,         "Conquistas",                    "Base",      "+ exclusivas"),
+        FeatureRow(Icons.Outlined.FileDownload,        "Exportar planilha",             "—",         "Sim"),
+        FeatureRow(Icons.Outlined.FileUpload,          "Importar extrato bancário",     "—",         "Sim"),
+        FeatureRow(Icons.Outlined.NotificationsActive, "Detecção automática de compras","—",         "Sim"),
+        FeatureRow(Icons.Outlined.Shield,              "Modo estrito",                  "—",         "Sim"),
+        FeatureRow(Icons.Outlined.WifiOff,             "Análise offline",               "—",         "Sim"),
+        FeatureRow(Icons.Outlined.AutoAwesome,         "Insight semanal por IA",        "—",         "Sim"),
+        FeatureRow(Icons.Outlined.CardGiftcard,        "Programa de indicação",         "—",         "7 dias grátis")
     )
 
     Column(

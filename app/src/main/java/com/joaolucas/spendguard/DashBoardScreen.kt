@@ -35,6 +35,7 @@ fun DashboardScreen(
     streakManager: StreakManager,
     goalManager: GoalManager,
     weeklyInsightManager: WeeklyInsightManager,
+    proManager: ProManager,
     onNavigate: (ViewState) -> Unit
 ) {
     val context       = LocalContext.current
@@ -292,8 +293,9 @@ fun DashboardScreen(
             }
         }
 
+        val isPro by proManager.isPro.collectAsState()
         weeklyInsight?.let { insight ->
-            if (insight.summary.isNotEmpty()) {
+            if (insight.summary.isNotEmpty() && isPro) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()

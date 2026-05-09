@@ -4,6 +4,7 @@ import android.app.DatePickerDialog
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -49,7 +50,9 @@ enum class PeriodFilter(val label: String) {
 fun HistoryScreen(
     database: SpendGuardDatabase,
     userRepository: UserRepository,
-    onOpenImport: () -> Unit
+    proManager: ProManager,
+    onOpenImport: () -> Unit,
+    onShowPaywall: () -> Unit
 ) {
     val currentUserId = userRepository.getCurrentUserId() ?: ""
     val purchases by database.purchaseDao()
@@ -67,15 +70,12 @@ fun HistoryScreen(
     var showPeriodMenu        by remember { mutableStateOf(false) }
     var showClearDialog       by remember { mutableStateOf(false) }
     var showShareDialog       by remember { mutableStateOf(false) }
-    var showGoalDialog        by remember { mutableStateOf(false) }
     var showCategoryBreakdown by remember { mutableStateOf(false) }
     var exportLoading         by remember { mutableStateOf(false) }
     var editingPurchase       by remember { mutableStateOf<PurchaseEntity?>(null) }
     var expandedCardId        by remember { mutableStateOf(-1) }
 
     val prefs      = remember { context.getSharedPreferences("spendguard_prefs", Context.MODE_PRIVATE) }
-    var weeklyGoal by remember { mutableStateOf(prefs.getFloat("weekly_goal", 0f).toDouble()) }
-    var goalInput  by remember { mutableStateOf(if (weeklyGoal > 0) "%.2f".format(weeklyGoal) else "") }
 
     val periodFiltered = remember(purchases, selectedPeriod, customStart, customEnd) {
         val now = System.currentTimeMillis()
@@ -116,7 +116,6 @@ fun HistoryScreen(
     val totalBlocked  = purchases.count { it.wasBlocked }
     val totalApproved = purchases.count { !it.wasBlocked }
     val savedAmount   = purchases.filter { it.wasBlocked }.sumOf { it.price }
-    val goalProgress  = if (weeklyGoal > 0) (savedAmount / weeklyGoal).coerceIn(0.0, 1.0).toFloat() else 0f
 
     val categoryBreakdown: Map<SpendingCategory, Double> = remember(purchases) {
         purchases
@@ -198,48 +197,7 @@ fun HistoryScreen(
         )
     }
 
-    if (showGoalDialog) {
-        AlertDialog(
-            onDismissRequest = { showGoalDialog = false },
-            icon  = { Icon(Icons.Outlined.TrackChanges, null, tint = gold) },
-            title = { Text("Meta de economia semanal", fontWeight = FontWeight.Bold) },
-            text  = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        "Defina quanto quer economizar (não gastar em impulsos) por semana:",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    OutlinedTextField(
-                        value         = goalInput,
-                        onValueChange = { goalInput = it },
-                        label         = { Text("Meta em R$") },
-                        prefix        = { Text("R$ ") },
-                        singleLine    = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        colors        = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = gold,
-                            focusedLabelColor  = gold,
-                            cursorColor        = gold
-                        )
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val goal = goalInput.replace(",", ".").toDoubleOrNull() ?: 0.0
-                        weeklyGoal = goal
-                        prefs.edit().putFloat("weekly_goal", goal.toFloat()).apply()
-                        showGoalDialog = false
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = gold, contentColor = Color(0xFF121212))
-                ) { Text("Salvar", fontWeight = FontWeight.Bold) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showGoalDialog = false }) { Text("Cancelar") }
-            }
-        )
-    }
+
 
     editingPurchase?.let { purchaseToEdit ->
         EditPurchaseDialog(
@@ -253,8 +211,6 @@ fun HistoryScreen(
             }
         )
     }
-
-    // (empty-state is now shown inline inside the LazyColumn, not as early-return)
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
 
@@ -271,74 +227,7 @@ fun HistoryScreen(
             }
         }
 
-        if (savedAmount > 0) {
-            item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .padding(bottom = 8.dp),
-                    shape  = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
-                ) {
-                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Outlined.Savings, null, tint = gold, modifier = Modifier.size(20.dp))
-                            Spacer(Modifier.width(10.dp))
-                            Text(
-                                "Você evitou gastar R$ ${"%.2f".format(savedAmount)} em compras bloqueadas",
-                                style      = MaterialTheme.typography.bodySmall,
-                                color      = gold,
-                                fontWeight = FontWeight.Medium,
-                                modifier   = Modifier.weight(1f)
-                            )
-                        }
-
-                        if (weeklyGoal > 0) {
-                            val pct = (goalProgress * 100).roundToInt()
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Row(
-                                    modifier              = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        "Meta semanal: R$ ${"%.2f".format(weeklyGoal)}",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = gold.copy(alpha = 0.7f)
-                                    )
-                                    Text(
-                                        "$pct%",
-                                        style      = MaterialTheme.typography.labelSmall,
-                                        color      = if (goalProgress >= 1f) Color(0xFF81C784) else gold.copy(alpha = 0.7f),
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                                LinearProgressIndicator(
-                                    progress   = goalProgress,
-                                    modifier   = Modifier.fillMaxWidth().height(6.dp),
-                                    color      = if (goalProgress >= 1f) Color(0xFF81C784) else gold,
-                                    trackColor = gold.copy(alpha = 0.2f)
-                                )
-                                if (goalProgress >= 1f) {
-                                    Row(
-                                        verticalAlignment     = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        Icon(Icons.Outlined.EmojiEvents, null, tint = Color(0xFF81C784), modifier = Modifier.size(14.dp))
-                                        Text(
-                                            "Meta atingida — disciplina financeira em ação.",
-                                            style      = MaterialTheme.typography.labelSmall,
-                                            color      = Color(0xFF81C784),
-                                            fontWeight = FontWeight.Medium
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        
 
         if (categoryBreakdown.isNotEmpty()) {
             item {
@@ -451,7 +340,9 @@ fun HistoryScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(androidx.compose.foundation.rememberScrollState()),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -470,25 +361,46 @@ fun HistoryScreen(
                         }
                     }
                     Box {
-                        FilterChip(
-                            selected = selectedPeriod != PeriodFilter.ALL,
+                        Surface(
                             onClick  = { showPeriodMenu = true },
-                            label    = {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Outlined.CalendarMonth, null, modifier = Modifier.size(14.dp))
-                                    Spacer(Modifier.width(4.dp))
-                                    Text(
-                                        if (selectedPeriod == PeriodFilter.ALL) "Período" else selectedPeriod.label,
-                                        fontSize = 12.sp,
-                                        maxLines = 1
-                                    )
-                                }
-                            },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.inversePrimary,
-                                selectedLabelColor     = Color(0xFF121212)
-                            )
-                        )
+                            shape    = RoundedCornerShape(50.dp),
+                            color    = if (selectedPeriod != PeriodFilter.ALL)
+                                           MaterialTheme.colorScheme.inversePrimary
+                                       else MaterialTheme.colorScheme.surface,
+                            border   = androidx.compose.foundation.BorderStroke(
+                                width = if (selectedPeriod != PeriodFilter.ALL) 0.dp else 0.5.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant
+                            ),
+                            modifier = Modifier.height(36.dp).widthIn(min = 130.dp)
+                        ) {
+                            Row(
+                                modifier              = Modifier
+                                    .fillMaxHeight()
+                                    .padding(horizontal = 14.dp),
+                                verticalAlignment     = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    Icons.Outlined.CalendarMonth,
+                                    null,
+                                    modifier = Modifier.size(14.dp),
+                                    tint     = if (selectedPeriod != PeriodFilter.ALL)
+                                                   Color(0xFF121212)
+                                               else MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    text       = if (selectedPeriod == PeriodFilter.ALL) "Período" else selectedPeriod.label,
+                                    fontSize   = 12.sp,
+                                    maxLines   = 1,
+                                    softWrap   = false,
+                                    fontWeight = if (selectedPeriod != PeriodFilter.ALL) FontWeight.Bold else FontWeight.Normal,
+                                    color      = if (selectedPeriod != PeriodFilter.ALL)
+                                                     Color(0xFF121212)
+                                                 else MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
                         DropdownMenu(
                             expanded         = showPeriodMenu,
                             onDismissRequest = { showPeriodMenu = false }
@@ -506,7 +418,7 @@ fun HistoryScreen(
                                                     val start = Calendar.getInstance()
                                                     start.set(y, m, d, 0, 0, 0)
                                                     customStart = start.timeInMillis
-                                                    DatePickerDialog(
+                                                    val endPicker = DatePickerDialog(
                                                         context,
                                                         { _, y2, m2, d2 ->
                                                             val end = Calendar.getInstance()
@@ -517,12 +429,14 @@ fun HistoryScreen(
                                                         calNow.get(Calendar.YEAR),
                                                         calNow.get(Calendar.MONTH),
                                                         calNow.get(Calendar.DAY_OF_MONTH)
-                                                    ).show()
+                                                    )
+                                                    endPicker.setTitle("Até: selecione a data final")
+                                                    endPicker.show()
                                                 },
                                                 calNow.get(Calendar.YEAR),
                                                 calNow.get(Calendar.MONTH),
                                                 calNow.get(Calendar.DAY_OF_MONTH)
-                                            ).show()
+                                            ).also { it.setTitle("De: selecione a data inicial") }.show()
                                         } else {
                                             selectedPeriod = period
                                             customStart = null
@@ -594,8 +508,10 @@ fun HistoryScreen(
                     ActionButton(
                         icon    = Icons.Outlined.FileDownload,
                         label   = "Exportar",
-                        tint    = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint    = if (proManager.isPro.value) MaterialTheme.colorScheme.onSurfaceVariant
+                                  else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                         onClick = {
+                            if (!proManager.isPro.value) { onShowPaywall(); return@ActionButton }
                             exportLoading = true
                             scope.launch {
                                 exportToCsv(context, purchases)
@@ -607,15 +523,11 @@ fun HistoryScreen(
                     ActionButton(
                         icon    = Icons.Outlined.FileUpload,
                         label   = "Importar",
-                        tint    = MaterialTheme.colorScheme.onSurfaceVariant,
-                        onClick = onOpenImport
+                        tint    = if (proManager.isPro.value) MaterialTheme.colorScheme.onSurfaceVariant
+                                  else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                        onClick = { if (!proManager.isPro.value) onShowPaywall() else onOpenImport() }
                     )
-                    ActionButton(
-                        icon    = Icons.Outlined.TrackChanges,
-                        label   = "Meta",
-                        tint    = MaterialTheme.colorScheme.onSurfaceVariant,
-                        onClick = { showGoalDialog = true }
-                    )
+
                     ActionButton(
                         icon    = Icons.Outlined.Share,
                         label   = "Compartilhar",
@@ -1043,7 +955,6 @@ fun PurchaseHistoryCard(
     ) {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
 
-            // ── Header row (always visible) ──────────────────────────────
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     if (isBlocked) Icons.Outlined.Block else Icons.Outlined.CheckCircle,
@@ -1072,7 +983,6 @@ fun PurchaseHistoryCard(
                 )
             }
 
-            // ── Tags row (always visible) ────────────────────────────────
             Row(
                 verticalAlignment     = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -1106,7 +1016,6 @@ fun PurchaseHistoryCard(
                 }
             }
 
-            // ── Expanded content ─────────────────────────────────────────
             if (isExpanded) {
                 Divider(
                     modifier  = Modifier.padding(vertical = 4.dp),

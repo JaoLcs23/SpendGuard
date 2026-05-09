@@ -3,6 +3,7 @@ package com.joaolucas.spendguard
 import android.content.Context
 import android.content.Intent
 import android.provider.Settings
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -410,22 +411,37 @@ fun SettingsScreen(
         }
 
         Spacer(Modifier.height(8.dp))
-        SettingsSectionTitle("Perfil", Icons.Outlined.Person)
+        SettingsSectionTitle("Personalização do Guardião", Icons.Outlined.Psychology)
         SettingsCard {
             val profile = remember { profileManager.load() }
             SettingsItem(
-                icon    = Icons.Outlined.AccountCircle,
-                title   = "Perfil financeiro",
+                icon    = Icons.Outlined.TrendingUp,
+                title   = "Contexto financeiro",
                 subtitle = if (profile.isComplete)
-                    "Objetivo: ${profile.goalLabel()} · ${profile.incomeLabel()}"
+                    "Renda: ${profile.incomeLabel()} · Objetivo: ${profile.goalLabel()}"
                 else
-                    "Configure para análises personalizadas",
+                    "Informe sua renda e objetivo para análises mais precisas da IA",
                 trailing = {
-                    Icon(
-                        Icons.Outlined.ChevronRight,
-                        null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = if (!profile.isComplete)
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                            else
+                                MaterialTheme.colorScheme.surfaceVariant
+                        ) {
+                            Text(
+                                if (!profile.isComplete) "Configurar" else "Editar",
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (!profile.isComplete)
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                 },
                 onClick = { showProfileScreen = true }
             )
@@ -550,6 +566,38 @@ fun SettingsScreen(
                 subtitle = "LGPD — seus direitos e como os respeitamos",
                 onClick = { showPrivacyDialog = true }
             )
+        }
+
+        Spacer(Modifier.height(8.dp))
+        SettingsSectionTitle("Conta", Icons.Outlined.AccountCircle)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape    = RoundedCornerShape(16.dp),
+            colors   = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f)
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showSignOutDialog = true }
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    Icons.Outlined.Logout, null,
+                    tint     = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    "Sair da conta",
+                    style      = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color      = MaterialTheme.colorScheme.error
+                )
+            }
         }
 
         Spacer(Modifier.height(8.dp))

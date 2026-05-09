@@ -66,20 +66,13 @@ class ProManager(context: Context) {
         if (!_isPro.value) incrementWeeklyCount(KEY_CALC_WEEK, KEY_CALC_COUNT)
     }
 
-    fun canSaveToLibrary(): Boolean {
-        checkTrialExpiry()
-        if (_isPro.value) return true
-        return getWeeklyCount(KEY_SAVES_WEEK, KEY_SAVES_COUNT) < FREE_WEEKLY_SAVES_LIMIT
-    }
+    fun canSaveToLibrary(): Boolean = true
 
-    fun librarySavesLeft(): Int {
-        if (_isPro.value) return Int.MAX_VALUE
-        return maxOf(0, FREE_WEEKLY_SAVES_LIMIT - getWeeklyCount(KEY_SAVES_WEEK, KEY_SAVES_COUNT))
-    }
+    fun librarySavesLeft(): Int = Int.MAX_VALUE
 
-    fun registerLibrarySave() {
-        if (!_isPro.value) incrementWeeklyCount(KEY_SAVES_WEEK, KEY_SAVES_COUNT)
-    }
+    fun registerLibrarySave() {}
+
+    fun canExport(): Boolean = _isPro.value
 
     fun canUseNotifications(): Boolean = _isPro.value
 

@@ -164,21 +164,51 @@ fun SimulatorScreen(
                     Text("Isso ajuda o Guardião a calibrar a análise para seu estado atual.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        EmotionalState.values().forEach { emotion ->
-                            val isSelected = selectedEmotion == emotion
-                            FilterChip(
-                                selected = isSelected,
-                                onClick = {
-                                    selectedEmotion = emotion
-                                    showEmotionPicker = false
-                                },
-                                label = { Text(emotion.label, fontSize = 12.sp) },
-                                modifier = Modifier.weight(1f)
-                            )
+                    val emotionRows = EmotionalState.values().toList().chunked(2)
+                    emotionRows.forEach { rowItems ->
+                        Row(
+                            modifier              = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            rowItems.forEach { emotion ->
+                                val isSelected = selectedEmotion == emotion
+                                Surface(
+                                    onClick = {
+                                        selectedEmotion = emotion
+                                        showEmotionPicker = false
+                                    },
+                                    modifier  = Modifier
+                                        .weight(1f)
+                                        .height(52.dp),
+                                    shape     = RoundedCornerShape(12.dp),
+                                    color     = if (isSelected) gold.copy(alpha = 0.18f)
+                                                else MaterialTheme.colorScheme.surface,
+                                    border    = androidx.compose.foundation.BorderStroke(
+                                        width = if (isSelected) 1.5.dp else 0.5.dp,
+                                        color = if (isSelected) gold
+                                                else MaterialTheme.colorScheme.outlineVariant
+                                    )
+                                ) {
+                                    Row(
+                                        modifier              = Modifier.fillMaxSize(),
+                                        verticalAlignment     = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        Text(emotion.emoji, fontSize = 18.sp)
+                                        Spacer(Modifier.width(6.dp))
+                                        Text(
+                                            emotion.label,
+                                            fontSize   = 13.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                            color      = if (isSelected) gold
+                                                         else MaterialTheme.colorScheme.onSurface,
+                                            maxLines   = 1,
+                                            softWrap   = false
+                                        )
+                                    }
+                                }
+                            }
+                            if (rowItems.size == 1) Spacer(Modifier.weight(1f))
                         }
                     }
                 }
@@ -332,7 +362,7 @@ fun SimulatorScreen(
                                 "notification_id" to System.currentTimeMillis().toInt()
                             )
                             val workRequest = androidx.work.OneTimeWorkRequestBuilder<CoolingOffWorker>()
-                                .setInitialDelay(analysis.coolingOffTime.toLong(), java.util.concurrent.TimeUnit.SECONDS)
+                                .setInitialDelay(analysis.coolingOffTime.toLong(), java.util.concurrent.TimeUnit.HOURS)
                                 .setInputData(workData)
                                 .build()
                             androidx.work.WorkManager.getInstance(context).enqueue(workRequest)
@@ -486,7 +516,7 @@ fun SimulatorScreen(
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        "Período de reflexão: ${analysis.coolingOffTime / 60} horas",
+                                        "Período de reflexão: ${if (analysis.coolingOffTime < 24) "${analysis.coolingOffTime}h" else if (analysis.coolingOffTime == 168) "1 semana" else "${analysis.coolingOffTime}h"}",
                                         style = MaterialTheme.typography.labelMedium,
                                         color = accentColor,
                                         fontWeight = FontWeight.Bold

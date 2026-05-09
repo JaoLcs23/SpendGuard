@@ -22,6 +22,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -167,53 +168,192 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun SplashScreen() {
-    val gold    = Color(0xFFFFD700)
-    var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { delay(100); visible = true }
-    val alpha by androidx.compose.animation.core.animateFloatAsState(
-        targetValue    = if (visible) 1f else 0f,
-        animationSpec  = androidx.compose.animation.core.tween(600),
-        label          = "alpha"
+    val gold  = Color(0xFFFFD700)
+    val black = Color(0xFF121212)
+
+    var phase by remember { mutableStateOf(0) }
+
+    LaunchedEffect(Unit) {
+        delay(80);  phase = 1
+        delay(420); phase = 2
+        delay(380); phase = 3
+        delay(300); phase = 4
+    }
+
+    val logoAlpha by androidx.compose.animation.core.animateFloatAsState(
+        targetValue   = if (phase >= 1) 1f else 0f,
+        animationSpec = androidx.compose.animation.core.tween(600),
+        label = "la"
+    )
+    val logoScale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue   = if (phase >= 1) 1f else 0.6f,
+        animationSpec = androidx.compose.animation.core.tween(700, easing = androidx.compose.animation.core.EaseOutBack),
+        label = "ls"
+    )
+    val textAlpha by androidx.compose.animation.core.animateFloatAsState(
+        targetValue   = if (phase >= 2) 1f else 0f,
+        animationSpec = androidx.compose.animation.core.tween(500),
+        label = "ta"
+    )
+    val textOffset by androidx.compose.animation.core.animateFloatAsState(
+        targetValue   = if (phase >= 2) 0f else 20f,
+        animationSpec = androidx.compose.animation.core.tween(500, easing = androidx.compose.animation.core.EaseOutCubic),
+        label = "to"
+    )
+    val featureAlpha by androidx.compose.animation.core.animateFloatAsState(
+        targetValue   = if (phase >= 3) 1f else 0f,
+        animationSpec = androidx.compose.animation.core.tween(600),
+        label = "fa"
+    )
+    val progressAlpha by androidx.compose.animation.core.animateFloatAsState(
+        targetValue   = if (phase >= 4) 1f else 0f,
+        animationSpec = androidx.compose.animation.core.tween(400),
+        label = "pa"
     )
 
-    Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFF121212)) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier            = Modifier.alpha(alpha).padding(32.dp)
-            ) {
-                Icon(
-                    painter            = painterResource(id = R.drawable.ic_launcher_foreground),
-                    contentDescription = "Logo SpendGuard",
-                    modifier           = Modifier.size(120.dp),
-                    tint               = Color.Unspecified
+    Surface(modifier = Modifier.fillMaxSize(), color = black) {
+        Box(modifier = Modifier.fillMaxSize()) {
+
+            androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+                drawCircle(
+                    color  = gold.copy(alpha = 0.03f),
+                    radius = size.width * 0.8f,
+                    center = androidx.compose.ui.geometry.Offset(size.width * 0.85f, size.height * 0.15f)
                 )
-                Spacer(modifier = Modifier.height(40.dp))
-                Text(
-                    "SpendGuard",
-                    style         = MaterialTheme.typography.displayMedium,
-                    color         = Color.White,
-                    fontWeight    = FontWeight.ExtraBold,
-                    letterSpacing = 1.sp
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    "Seu guardião financeiro",
-                    style         = MaterialTheme.typography.titleMedium,
-                    color         = gold.copy(alpha = 0.85f),
-                    fontWeight    = FontWeight.Light,
-                    letterSpacing = 0.5.sp
+                drawCircle(
+                    color  = gold.copy(alpha = 0.025f),
+                    radius = size.width * 0.6f,
+                    center = androidx.compose.ui.geometry.Offset(size.width * 0.1f, size.height * 0.85f)
                 )
             }
-            CircularProgressIndicator(
-                modifier    = Modifier
+
+            Column(
+                modifier            = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 36.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+
+                Box(
+                    modifier = Modifier
+                        .alpha(logoAlpha)
+                        .scale(logoScale)
+                ) {
+                    androidx.compose.foundation.Canvas(modifier = Modifier.size(130.dp)) {
+                        drawCircle(color = gold.copy(alpha = 0.06f), radius = size.minDimension / 2f)
+                        drawCircle(color = gold.copy(alpha = 0.04f), radius = size.minDimension / 2.3f)
+                    }
+                    Surface(
+                        shape    = androidx.compose.foundation.shape.RoundedCornerShape(32.dp),
+                        color    = gold.copy(alpha = 0.14f),
+                        modifier = Modifier
+                            .size(100.dp)
+                            .align(Alignment.Center)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                painter            = painterResource(id = R.drawable.ic_launcher_foreground),
+                                contentDescription = null,
+                                modifier           = Modifier.size(72.dp),
+                                tint               = Color.Unspecified
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(36.dp))
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .alpha(textAlpha)
+                        .offset(y = textOffset.dp)
+                ) {
+                    Text(
+                        "SpendGuard",
+                        style         = MaterialTheme.typography.displaySmall,
+                        color         = Color.White,
+                        fontWeight    = FontWeight.ExtraBold,
+                        letterSpacing = 1.sp
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Row(
+                        verticalAlignment     = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Surface(
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp),
+                            color = gold.copy(alpha = 0.2f)
+                        ) {
+                            Text(
+                                "IA",
+                                modifier  = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                style     = MaterialTheme.typography.labelSmall,
+                                color     = gold,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Text(
+                            "Seu guardião financeiro pessoal",
+                            style         = MaterialTheme.typography.bodySmall,
+                            color         = gold.copy(alpha = 0.7f),
+                            letterSpacing = 0.5.sp
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(48.dp))
+
+                Column(
+                    modifier            = Modifier.alpha(featureAlpha),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf(
+                        "🛡️" to "Guardião anti-impulso com IA",
+                        "🔥" to "Streak de dias sem impulso",
+                        "🎯" to "Meta de economia personalizada",
+                        "📊" to "Gráfico e histórico detalhado"
+                    ).forEach { (emoji, label) ->
+                        Row(
+                            modifier          = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(emoji, fontSize = 14.sp)
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                label,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.White.copy(alpha = 0.55f)
+                            )
+                        }
+                    }
+                }
+            }
+
+            Column(
+                modifier            = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 72.dp)
-                    .size(24.dp)
-                    .alpha(alpha),
-                color       = gold,
-                strokeWidth = 2.dp
-            )
+                    .padding(bottom = 40.dp)
+                    .alpha(progressAlpha),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                LinearProgressIndicator(
+                    modifier   = Modifier
+                        .padding(horizontal = 80.dp)
+                        .fillMaxWidth()
+                        .height(2.dp),
+                    color      = gold.copy(alpha = 0.8f),
+                    trackColor = gold.copy(alpha = 0.12f)
+                )
+                Text(
+                    "v${BuildConfig.VERSION_NAME}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White.copy(alpha = 0.25f)
+                )
+            }
         }
     }
 }
@@ -462,12 +602,15 @@ fun MainScreen(
                     streakManager        = streakManager,
                     goalManager          = goalManager,
                     weeklyInsightManager = weeklyInsightManager,
+                    proManager           = proManager,
                     onNavigate           = { destination -> currentView = destination }
                 )
                 ViewState.HISTORY -> HistoryScreen(
                     database       = database,
                     userRepository = userRepository,
-                    onOpenImport   = { currentView = ViewState.IMPORT }
+                    proManager     = proManager,
+                    onOpenImport   = { currentView = ViewState.IMPORT },
+                    onShowPaywall  = { currentView = ViewState.PAYWALL }
                 )
                 ViewState.SETTINGS -> SettingsScreen(
                     database         = database,
@@ -508,6 +651,7 @@ fun MainScreen(
                     streakManager        = streakManager,
                     goalManager          = goalManager,
                     weeklyInsightManager = weeklyInsightManager,
+                    proManager           = proManager,
                     onNavigate           = { destination -> currentView = destination }
                 )
             }

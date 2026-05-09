@@ -107,7 +107,12 @@ $profileSection$workSection$emotionalSection
     REGRAS DE RETORNO (JSON):
     - allowed: booleano (true ou false).
     - message: Se bloqueado, dê uma "bronca" amigável e reflexiva, focando no longo prazo. Se permitido, parabenize a consciência financeira. (Máximo de 3 linhas).
-    - coolingOffTime: Se allowed=false, defina um tempo de "geladeira" em minutos (ex: 60, 120, 720, 1440) proporcional ao valor (itens mais caros exigem mais tempo). Se allowed=true, retorne 0.
+    - coolingOffTime: Se allowed=false, defina um tempo de reflexão em HORAS proporcional ao valor. Referência:
+      * 24 horas: compras até R$100
+      * 48 horas: compras entre R$100–R$500
+      * 72 horas: compras entre R$500–R$1000
+      * 168 horas (1 semana): compras acima de R$1000
+      Se allowed=true, retorne 0. O valor representa HORAS, não minutos.
     - category: Classifique o item em UMA das categorias abaixo. Retorne EXATAMENTE o nome em maiúsculas, sem alteração.
       Opções: $categoryOptions
 
