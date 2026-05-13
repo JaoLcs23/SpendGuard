@@ -137,6 +137,17 @@ fun OnboardingScreen(isReplay: Boolean = false, onFinish: () -> Unit) {
         ),
 
         OnboardingPage(
+            icon        = Icons.Outlined.WifiOff,
+            title       = "IA que Aprende com Você",
+            description = "O Guardião offline evolui com cada análise feita com internet. Quanto mais você usa, mais preciso ele fica — mesmo sem conexão.",
+            highlights  = listOf(
+                Icons.Outlined.Psychology        to "Aprende os padrões das suas decisões reais com o Gemini",
+                Icons.Outlined.OfflinePin        to "Análise offline usa seu histórico pessoal, não regras genéricas",
+                Icons.Outlined.TrendingUp        to "Melhora progressivamente a partir de 10 análises online",
+                Icons.Outlined.Security          to "Modelo salvo localmente — seus dados nunca saem do aparelho"
+            )
+        ),
+        OnboardingPage(
             icon            = Icons.Outlined.WorkspacePremium,
             title           = "Grátis vs Pro",
             description     = "Comece grátis. Evolua quando quiser.",

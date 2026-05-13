@@ -310,10 +310,10 @@ fun SplashScreen() {
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     listOf(
-                        "🛡️" to "Guardião anti-impulso com IA",
-                        "🔥" to "Streak de dias sem impulso",
-                        "🎯" to "Meta de economia personalizada",
-                        "📊" to "Gráfico e histórico detalhado"
+                        "" to "Guardião anti-impulso com IA",
+                        "" to "Streak de dias sem impulso",
+                        "" to "Meta de economia personalizada",
+                        "" to "Gráfico e histórico detalhado"
                     ).forEach { (emoji, label) ->
                         Row(
                             modifier          = Modifier.fillMaxWidth(),

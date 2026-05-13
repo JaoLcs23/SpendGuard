@@ -18,6 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontStyle
@@ -64,6 +66,8 @@ fun SimulatorScreen(
     val currentUserId = remember { userRepository.getCurrentUserId() ?: "" }
     val focusManager = LocalFocusManager.current
 
+    // rememberSaveable preserves input fields across screen navigation
+    // but is reset when the app is fully closed (Activity recreated from scratch)
     val itemNameState      = rememberSaveable { mutableStateOf(autoItemName) }
     val itemPriceState     = rememberSaveable { mutableStateOf(if (autoItemPrice > 0) autoItemPrice.toString() else "") }
     val justificationState = rememberSaveable { mutableStateOf("") }
@@ -340,6 +344,30 @@ fun SimulatorScreen(
                 result    = null
 
                 scope.launch {
+                    val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE)
+                            as ConnectivityManager
+                    val hasInternet = cm.getNetworkCapabilities(cm.activeNetwork)
+                        ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+
+                    if (!hasInternet) {
+                        val offlineResult = AdaptiveOfflineModel.analyze(context, itemName, price, justification)
+                        result = offlineResult
+                        val purchase = PurchaseEntity(
+                            userId         = currentUserId,
+                            itemName       = itemName,
+                            price          = price,
+                            justification  = justification,
+                            wasBlocked     = !offlineResult.allowed,
+                            aiMessage      = offlineResult.message,
+                            coolingOffTime = offlineResult.coolingOffTime,
+                            category       = offlineResult.category
+                        )
+                        database.purchaseDao().insert(purchase)
+                        if (!offlineResult.allowed) streakManager.onImpulseBlocked()
+                        isLoading = false
+                        return@launch
+                    }
+
                     try {
                         val analysis = geminiService.analyzeImpulse(itemName, price, justification, userProfile)
                         result = analysis
@@ -356,6 +384,15 @@ fun SimulatorScreen(
                         )
                         database.purchaseDao().insert(purchase)
 
+                        AdaptiveModelTrainer.learn(
+                            context       = context,
+                            item          = itemName,
+                            price         = price,
+                            justification = justification,
+                            category      = analysis.category,
+                            wasBlocked    = !analysis.allowed
+                        )
+
                         if (!analysis.allowed && analysis.coolingOffTime > 0) {
                             val workData = androidx.work.workDataOf(
                                 "item_name"       to itemName,
@@ -369,7 +406,31 @@ fun SimulatorScreen(
                         }
 
                     } catch (e: Exception) {
-                        errorMsg = "Não foi possível concluir a análise. Verifique sua conexão e tente novamente."
+                        val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE)
+                                as ConnectivityManager
+                        val hasNet = cm.getNetworkCapabilities(cm.activeNetwork)
+                            ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+
+                        if (!hasNet) {
+                            val offlineResult = AdaptiveOfflineModel.analyze(context, itemName, price, justification)
+                            result = offlineResult
+                            val purchase = PurchaseEntity(
+                                userId         = currentUserId,
+                                itemName       = itemName,
+                                price          = price,
+                                justification  = justification,
+                                wasBlocked     = !offlineResult.allowed,
+                                aiMessage      = offlineResult.message,
+                                coolingOffTime = offlineResult.coolingOffTime,
+                                category       = offlineResult.category
+                            )
+                            database.purchaseDao().insert(purchase)
+                            if (!offlineResult.allowed && offlineResult.coolingOffTime > 0) {
+                                streakManager.onImpulseBlocked()
+                            }
+                        } else {
+                            errorMsg = "Não foi possível concluir a análise. Tente novamente."
+                        }
                     } finally {
                         isLoading = false
                     }

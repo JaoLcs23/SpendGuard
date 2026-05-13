@@ -24,12 +24,15 @@ class ShoppingNotificationListener : NotificationListenerService() {
     private val processedKeys: MutableSet<String> = object : LinkedHashSet<String>(512) {
         private val maxSize = 500
         override fun add(element: String): Boolean {
-            if (size >= maxSize) {
-                remove(iterator().next())
-            }
+            if (size >= maxSize) remove(iterator().next())
             return super.add(element)
         }
     }
+
+    private val recentContentHashes = object : LinkedHashMap<Int, Long>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: Map.Entry<Int, Long>) = size > 100
+    }
+    private val CONTENT_DEDUP_MS = 30_000L
 
     private val shoppingApps = mapOf(
         "com.google.android.gm"             to "Gmail",
@@ -142,6 +145,14 @@ class ShoppingNotificationListener : NotificationListenerService() {
             .trim()
             .take(MAX_NOTIFICATION_TEXT_LENGTH)
             .replace(Regex("[\\x00-\\x1F\\x7F]"), " ")
+
+        val contentHash = ("$title|$text").hashCode()
+        val now = System.currentTimeMillis()
+        synchronized(recentContentHashes) {
+            val lastSeen = recentContentHashes[contentHash]
+            if (lastSeen != null && now - lastSeen < CONTENT_DEDUP_MS) return
+            recentContentHashes[contentHash] = now
+        }
 
         val storeName = shoppingApps[packageName]
         if (storeName != null) {

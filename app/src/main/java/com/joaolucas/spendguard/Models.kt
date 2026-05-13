@@ -82,10 +82,10 @@ data class PixInfo(
 )
 
 enum class EmotionalState(val label: String, val emoji: String) {
-    WELL("Bem", "😊"),
-    TIRED("Cansado", "😴"),
-    STRESSED("Estressado", "😤"),
-    EXCITED("Animado", "🤩")
+    WELL("Bem", ""),
+    TIRED("Cansado", ""),
+    STRESSED("Estressado", ""),
+    EXCITED("Animado", "")
 }
 
 @Serializable

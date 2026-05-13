@@ -13,7 +13,15 @@ object OfflineAnalyzer {
         "quebrou", "estragou", "preciso trabalhar", "ferramenta", "saúde", "saude",
         "médico", "medico", "remédio", "remedio", "urgente", "necessário", "necessario",
         "substituir", "parou de funcionar", "essencial", "trabalho", "sem condição",
-        "sem condicao", "necessidade", "obrigação", "obrigacao"
+        "sem condicao", "necessidade", "obrigação", "obrigacao",
+        "prova", "escola", "faculdade", "estudo", "estudar", "aula", "curso",
+        "material", "material escolar", "lápis", "caneta", "caderno", "apostila",
+        "alimentação", "alimentacao", "almoço", "almoco", "jantar", "café", "cafe",
+        "transporte", "passagem", "combustível", "combustivel", "gasolina",
+        "conta", "boleto", "aluguel", "luz", "água", "agua", "internet", "telefone",
+        "higiene", "sabonete", "shampoo", "pasta de dente", "papel higiênico",
+        "limpeza", "produto de limpeza", "acabou", "terminou", "faltou", "sem estoque",
+        "reposição", "reposicao", "preciso", "precisa", "precisamos"
     )
 
     private val categoryKeywords: List<Pair<SpendingCategory, List<String>>> = listOf(
@@ -88,34 +96,53 @@ object OfflineAnalyzer {
     }
 
     fun analyze(item: String, price: Double, justification: String): InterventionResult {
-        val combined = "$item $justification".lowercase()
+        val combinedBase = "$item $justification".lowercase()
 
-        val impulseScore    = impulseKeywords.count { combined.contains(it) }
-        val necessityScore  = necessityKeywords.count { combined.contains(it) }
+        val impulseScore    = impulseKeywords.count { combinedBase.contains(it) }
+        val necessityScore  = necessityKeywords.count { combinedBase.contains(it) }
 
         val highPrice     = price > 300.0
         val veryHighPrice = price > 1000.0
 
+        val justificationTrimmed = justification.trim()
+        val combined = "$item $justificationTrimmed".lowercase()
+        val lowPrice = price <= 30.0
+
+        val hasEmotionalWords = listOf(
+            "bonita", "bonito", "lindo", "linda", "achei bonito", "achei bonita",
+            "gostei", "adorei", "quero muito", "tô afim", "to afim", "parece bom",
+            "tava olhando", "vi na vitrine", "vi no insta", "vi no instagram",
+            "todo mundo usa", "ficou na minha cabeça", "não resisti",
+            "aproveitei a promoção", "tava barato demais"
+        ).any { combined.contains(it) }
+
+        val hasWeakJustification = justificationTrimmed.length < 10
+                || justificationTrimmed.split(" ").size < 3
+
         val allowed = when {
-            necessityScore >= 2                          -> true
-            necessityScore >= 1 && impulseScore == 0     -> true
-            impulseScore >= 2                            -> false
-            impulseScore >= 1 && highPrice               -> false
-            veryHighPrice && necessityScore == 0         -> false
-            justification.trim().length < 10             -> false
-            else                                         -> true
+            necessityScore >= 2                                              -> true
+            necessityScore >= 1 && impulseScore == 0 && !hasEmotionalWords  -> true
+            lowPrice && necessityScore >= 1                                  -> true
+            lowPrice && impulseScore == 0 && !hasEmotionalWords             -> true
+            impulseScore >= 1                                                -> false
+            hasEmotionalWords                                                -> false
+            veryHighPrice && necessityScore == 0                             -> false
+            highPrice && necessityScore == 0                                 -> false
+            hasWeakJustification && !lowPrice                                -> false
+            else                                                             -> false
         }
 
         val coolingOff = if (!allowed) when {
-            veryHighPrice -> 1440
-            highPrice     -> 720
-            else          -> 60
+            veryHighPrice -> 168
+            highPrice     -> 48
+            price > 100   -> 24
+            else          -> 24
         } else 0
 
         val message = if (allowed) {
-            "[Análise offline] Sua justificativa parece razoável. Mas se puder, conecte-se à internet para uma análise mais precisa."
+            "[Offline] Sua justificativa parece razoável. Conecte-se à internet para uma análise mais precisa pelo Guardião."
         } else {
-            "[Análise offline] A justificativa sugere uma compra por impulso. Aguarde ${coolingOff / 60}h antes de decidir. Reconnecte-se para uma análise completa."
+            "[Offline] A justificativa sugere uma compra por impulso. Aguarde ${coolingOff}h antes de decidir. Conecte-se para uma análise completa."
         }
 
         return InterventionResult(

@@ -187,12 +187,16 @@ Retorne APENAS JSON válido, sem markdown.
         val safeText = sanitize(notificationText)
 
         val prompt = """
-            Extraia informações de compra deste texto de notificação: "$safeText"
-            
-            Retorne APENAS JSON seguindo este esquema:
-            {"itemName": "nome do produto/serviço", "price": 0.0}
-            
-            Se não conseguir identificar claramente, retorne: {"itemName": "Compra detectada", "price": 0.0}
+            Você é um extrator de dados de notificações de compra. Analise este texto e extraia as informações:
+
+            TEXTO: "$safeText"
+
+            Regras de extração:
+            - itemName: nome do produto, serviço ou item comprado. Se houver vários, use o principal ou "Múltiplos itens".
+            - price: valor numérico em reais. Procure por padrões como "R$ X,XX", "R$ X.XX", "total: X", "valor: X", "R$ X". Use ponto como separador decimal. Se não encontrar, use 0.0.
+
+            Retorne APENAS JSON válido, sem markdown:
+            {"itemName": "nome do produto", "price": 0.0}
         """.trimIndent()
 
         return try {
