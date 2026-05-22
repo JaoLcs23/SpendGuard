@@ -637,6 +637,11 @@ fun SettingsScreen(
         }
 
         Spacer(Modifier.height(8.dp))
+
+        if (BuildConfig.DEBUG) {
+            DebugProPanel(proManager = proManager, isPro = isPro, plan = plan, gold = gold)
+            DebugNotificationPanel(context = context)
+        }
     }
 
     if (showProfileScreen) {
@@ -697,11 +702,6 @@ fun SettingsScreen(
             reason         = PaywallReason.GENERIC,
             onDismiss      = { showPaywall = false }
         )
-    }
-
-    if (BuildConfig.DEBUG) {
-        DebugProPanel(proManager = proManager, isPro = isPro, plan = plan, gold = gold)
-        DebugNotificationPanel(context = context)
     }
 }
 
