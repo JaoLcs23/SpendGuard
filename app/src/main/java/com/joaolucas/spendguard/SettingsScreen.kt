@@ -791,9 +791,6 @@ private fun DebugProPanel(
     Spacer(Modifier.height(8.dp))
 }
 
-// ---------------------------------------------------------------------------
-// Painel de teste de notificações (só aparece em debug builds)
-// ---------------------------------------------------------------------------
 @Composable
 private fun DebugNotificationPanel(context: android.content.Context) {
     val debugPurple = Color(0xFF7F77DD)
@@ -801,8 +798,6 @@ private fun DebugNotificationPanel(context: android.content.Context) {
     val scope = rememberCoroutineScope()
     var lastResult by remember { mutableStateOf("") }
 
-    // Cenários de teste pré-definidos:
-    // Cada item = Triple(label, rawText, isExpected: true=deve notificar / false=deve ignorar)
     val scenarios = listOf(
         Triple(
             "🛒 Compra real (ML)",
@@ -843,7 +838,6 @@ private fun DebugNotificationPanel(context: android.content.Context) {
             modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Cabe\u00e7alho
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(shape = RoundedCornerShape(6.dp), color = debugPurple.copy(alpha = 0.2f)) {
                     Text(
@@ -871,7 +865,6 @@ private fun DebugNotificationPanel(context: android.content.Context) {
                 lineHeight = MaterialTheme.typography.labelSmall.lineHeight
             )
 
-            // Bot\u00f5es de cen\u00e1rio
             scenarios.forEach { (label, rawText, shouldNotify) ->
                 OutlinedButton(
                     onClick = {
@@ -915,7 +908,6 @@ private fun DebugNotificationPanel(context: android.content.Context) {
                 }
             }
 
-            // Resultado do \u00faltimo disparo
             if (lastResult.isNotEmpty()) {
                 Surface(
                     shape = RoundedCornerShape(8.dp),

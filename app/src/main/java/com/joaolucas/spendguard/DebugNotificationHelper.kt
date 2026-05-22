@@ -1,16 +1,7 @@
 package com.joaolucas.spendguard
 
-/**
- * Utilitário de teste — só é compilado em debug builds.
- *
- * Invoca o mesmo pipeline que o ShoppingNotificationListener usa internamente,
- * sem precisar de um app externo ou manipulação de ADB.
- *
- * Uso: DebugNotificationHelper(context).fireTestNotification(rawText, isPurchase)
- */
 class DebugNotificationHelper(private val context: android.content.Context) {
 
-    // Reutiliza as mesmas listas do listener para garantir comportamento idêntico
     private val ignoreKeywords = listOf(
         "nota fiscal", "nf-e", "danfe", "chave de acesso", "xml da nota",
         "nota fiscal eletrônica", "segunda via", "nota fiscal disponível",
@@ -54,19 +45,16 @@ class DebugNotificationHelper(private val context: android.content.Context) {
     suspend fun fireTestNotification(rawText: String, isPurchaseScenario: Boolean) {
         val fullText = rawText.lowercase()
 
-        // ── Camada 1: ignoreKeywords ─────────────────────────────────────────
         if (ignoreKeywords.any { fullText.contains(it) }) {
             android.util.Log.d("DebugNotif", "BLOQUEADO por ignoreKeywords: $rawText")
             return
         }
 
-        // ── Detectar tipo (PIX ou compra) ────────────────────────────────────
         val isPixSent = pixSentKeywords.any { fullText.contains(it) }
 
         val geminiService = GeminiService(BuildConfig.GEMINI_API_KEY)
 
         if (isPixSent) {
-            // Pipeline PIX
             val pixInfo = geminiService.extractPixInfo(rawText)
             showDebugPixNotification(
                 bank      = "Teste (Debug)",
@@ -75,14 +63,12 @@ class DebugNotificationHelper(private val context: android.content.Context) {
                 rawText   = rawText
             )
         } else {
-            // Pipeline compra
             val purchaseInfo = geminiService.extractPurchaseInfo(rawText)
             val itemName = purchaseInfo?.itemName ?: "Item de Teste"
             val price    = purchaseInfo?.price ?: 0.0
 
-            // ── Camada 2: deduplicação 12h ───────────────────────────────────
             if (itemName != "Item de Teste") {
-                val since = System.currentTimeMillis() - 12L * 60 * 60 * 1000
+                val since = System.currentTimeMillis() - 48L * 60 * 60 * 1000
                 val db = SpendGuardDatabase.getDatabase(context)
                 val existing = db.purchaseDao().findSimilarRecentPurchase(itemName, since)
                 if (existing != null) {
@@ -98,8 +84,6 @@ class DebugNotificationHelper(private val context: android.content.Context) {
             )
         }
     }
-
-    // ── Funções de exibição de notificação (cópias das do listener) ──────────
 
     private fun showDebugShoppingNotification(store: String, itemName: String, price: Double) {
         val nm        = context.getSystemService(android.app.NotificationManager::class.java) ?: return
