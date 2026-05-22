@@ -701,6 +701,7 @@ fun SettingsScreen(
 
     if (BuildConfig.DEBUG) {
         DebugProPanel(proManager = proManager, isPro = isPro, plan = plan, gold = gold)
+        DebugNotificationPanel(context = context)
     }
 }
 
@@ -782,6 +783,155 @@ private fun DebugProPanel(
             }
             Text(
                 "Não aparece em builds de release.",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White.copy(alpha = 0.2f)
+            )
+        }
+    }
+    Spacer(Modifier.height(8.dp))
+}
+
+// ---------------------------------------------------------------------------
+// Painel de teste de notificações (só aparece em debug builds)
+// ---------------------------------------------------------------------------
+@Composable
+private fun DebugNotificationPanel(context: android.content.Context) {
+    val debugPurple = Color(0xFF7F77DD)
+    val debugPurpleLight = Color(0xFFAFA9EC)
+    val scope = rememberCoroutineScope()
+    var lastResult by remember { mutableStateOf("") }
+
+    // Cenários de teste pré-definidos:
+    // Cada item = Triple(label, rawText, isExpected: true=deve notificar / false=deve ignorar)
+    val scenarios = listOf(
+        Triple(
+            "🛒 Compra real (ML)",
+            "Pedido confirmado. Você comprou: T\u00eanis Nike Air Max 90 · R\$ 349,90. Seu pedido #ML-88271 foi aprovado.",
+            true
+        ),
+        Triple(
+            "💳 PIX enviado (Nubank)",
+            "PIX enviado. Voc\u00ea transferiu R\$ 150,00 para Jo\u00e3o Silva. Pagamento PIX conclu\u00eddo com sucesso.",
+            true
+        ),
+        Triple(
+            "📧 Promo\u00e7\u00e3o (deve ignorar)",
+            "Oferta especial para voc\u00ea! Aproveite at\u00e9 50% de desconto nos melhores produtos. Ver oferta agora!",
+            false
+        ),
+        Triple(
+            "📄 Nota Fiscal (deve ignorar)",
+            "Sua nota fiscal est\u00e1 dispon\u00edvel. Pedido #ML-88271 — acesse sua nota fiscal eletr\u00f4nica.",
+            false
+        ),
+        Triple(
+            "📦 Saiu p/ entrega (deve ignorar)",
+            "Seu pedido saiu para entrega! Previs\u00e3o de entrega: amanh\u00e3 at\u00e9 22h. Objeto postado em SP.",
+            false
+        )
+    )
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = debugPurple.copy(alpha = 0.07f)
+        ),
+        border = androidx.compose.foundation.BorderStroke(1.dp, debugPurple.copy(alpha = 0.25f))
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            // Cabe\u00e7alho
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(shape = RoundedCornerShape(6.dp), color = debugPurple.copy(alpha = 0.2f)) {
+                    Text(
+                        "DEBUG",
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = debugPurple,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "Testar notifica\u00e7\u00f5es",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = debugPurpleLight
+                )
+            }
+
+            Text(
+                "Dispara o pipeline completo (filtros \u2192 Gemini \u2192 dedup 12h). " +
+                "Itens marcados com \u274c n\u00e3o devem gerar notifica\u00e7\u00e3o.",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White.copy(alpha = 0.45f),
+                lineHeight = MaterialTheme.typography.labelSmall.lineHeight
+            )
+
+            // Bot\u00f5es de cen\u00e1rio
+            scenarios.forEach { (label, rawText, shouldNotify) ->
+                OutlinedButton(
+                    onClick = {
+                        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                            try {
+                                val listener = DebugNotificationHelper(context)
+                                listener.fireTestNotification(rawText, shouldNotify)
+                                lastResult = "$label — disparado"
+                            } catch (e: Exception) {
+                                lastResult = "Erro: ${e.message}"
+                            }
+                        }
+                    },
+                    shape = RoundedCornerShape(8.dp),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        if (shouldNotify) debugPurple.copy(alpha = 0.5f)
+                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f)
+                    ),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (shouldNotify) debugPurpleLight
+                                    else Color.White.copy(alpha = 0.4f),
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            if (shouldNotify) "\u2705 deve notificar" else "\u274c deve ignorar",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (shouldNotify) Color(0xFF81C784).copy(alpha = 0.8f)
+                                    else MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+            }
+
+            // Resultado do \u00faltimo disparo
+            if (lastResult.isNotEmpty()) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = debugPurple.copy(alpha = 0.1f)
+                ) {
+                    Text(
+                        "\u00daltimo: $lastResult",
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = debugPurpleLight
+                    )
+                }
+            }
+
+            Text(
+                "N\u00e3o aparece em builds de release.",
                 style = MaterialTheme.typography.labelSmall,
                 color = Color.White.copy(alpha = 0.2f)
             )
