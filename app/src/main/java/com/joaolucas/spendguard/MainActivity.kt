@@ -574,6 +574,7 @@ fun MainScreen(
         Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
             when (currentView) {
                 ViewState.LIBRARY -> LibraryScreen(
+                    database            = database,
                     educationRepository = educationRepository,
                     userRepository      = userRepository,
                     proManager          = proManager,

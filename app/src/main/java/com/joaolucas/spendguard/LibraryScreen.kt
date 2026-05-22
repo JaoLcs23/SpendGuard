@@ -57,6 +57,7 @@ private fun typeAccentColorLocal(type: ResourceType): Color = when (type) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(
+    database: SpendGuardDatabase,
     educationRepository: EducationRepository,
     userRepository: UserRepository,
     proManager: ProManager,
@@ -125,6 +126,7 @@ fun LibraryScreen(
 
         when (selectedTab) {
             0 -> ExploreTab(
+                database            = database,
                 proManager          = proManager,
                 educationRepository = educationRepository,
                 userRepository      = userRepository,
@@ -156,6 +158,7 @@ fun LibraryScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ExploreTab(
+    database: SpendGuardDatabase,
     proManager: ProManager,
     educationRepository: EducationRepository,
     userRepository: UserRepository,
@@ -169,10 +172,19 @@ private fun ExploreTab(
     val isPro        by proManager.isPro.collectAsState()
     val savesLeft    = proManager.librarySavesLeft()
 
-    var searchQuery        by remember { mutableStateOf("") }
-    var selectedType       by remember { mutableStateOf<ResourceType?>(null) }
-    var savingId           by remember { mutableStateOf<String?>(null) }
-    var saveMessage        by remember { mutableStateOf<Pair<String, Boolean>?>(null) }
+    var searchQuery  by remember { mutableStateOf("") }
+    var selectedType by remember { mutableStateOf<ResourceType?>(null) }
+    var savingId     by remember { mutableStateOf<String?>(null) }
+    var saveMessage  by remember { mutableStateOf<Pair<String, Boolean>?>(null) }
+
+    var purchases            by remember { mutableStateOf<List<PurchaseEntity>>(emptyList()) }
+    val recommendations       = remember(purchases) { ContentRecommender.recommend(purchases, EducationLibrary.resources) }
+    var selectedRecommendation by remember { mutableStateOf<EducationalResource?>(null) }
+    var savingRecommendation   by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        purchases = database.purchaseDao().getAllPurchasesList()
+    }
 
     val allResources = EducationLibrary.resources
     val filtered = remember(searchQuery, selectedType) {
@@ -264,12 +276,7 @@ private fun ExploreTab(
             modifier = Modifier.padding(horizontal = 16.dp)
         )
 
-        Text(
-            "${filtered.size} resultado${if (filtered.size != 1) "s" else ""}",
-            style    = MaterialTheme.typography.labelSmall,
-            color    = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
-        )
+
 
         saveMessage?.let { (msg, isSuccess) ->
             Surface(
@@ -321,10 +328,66 @@ private fun ExploreTab(
             }
         } else {
             LazyColumn(
-                contentPadding        = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement   = Arrangement.spacedBy(10.dp),
-                modifier              = Modifier.fillMaxSize()
+                contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier            = Modifier.fillMaxSize()
             ) {
+
+                if (recommendations.isNotEmpty()) {
+                    item {
+                        Column(modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)) {
+                            Row(
+                                verticalAlignment     = Alignment.CenterVertically,
+                                modifier              = Modifier.padding(bottom = 10.dp)
+                            ) {
+                                Icon(
+                                    Icons.Outlined.AutoAwesome, null,
+                                    tint     = gold,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    "Para Você",
+                                    style      = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(Modifier.weight(1f))
+                                Text(
+                                    "Com base no seu histórico",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                                )
+                            }
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                contentPadding        = PaddingValues(end = 4.dp)
+                            ) {
+                                items(recommendations, key = { it.title + "_rec" }) { resource ->
+                                    RecommendationCard(
+                                        resource = resource,
+                                        onClick  = { selectedRecommendation = resource }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    item {
+                        Divider(
+                            color    = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                    }
+                }
+
+                item {
+                    Text(
+                        "${filtered.size} resultado${if (filtered.size != 1) "s" else ""}",
+                        style    = MaterialTheme.typography.labelSmall,
+                        color    = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.padding(vertical = 2.dp)
+                    )
+                }
+
                 items(filtered, key = { it.title }) { resource ->
                     CatalogResourceCard(
                         resource  = resource,
@@ -362,6 +425,225 @@ private fun ExploreTab(
                 item { Spacer(Modifier.height(16.dp)) }
             }
         }
+    }
+
+    selectedRecommendation?.let { resource ->
+        ModalBottomSheet(
+            onDismissRequest = { selectedRecommendation = null },
+            sheetState       = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ) {
+            ResourceDetailSheet(
+                resource  = resource,
+                isSaving  = savingRecommendation,
+                onSave    = {
+                    savingRecommendation = true
+                    scope.launch {
+                        try {
+                            val userId = userRepository.getCurrentUserId() ?: ""
+                            val remote = EducationalResourceRemote(
+                                userId      = userId,
+                                title       = resource.title,
+                                author      = resource.author,
+                                type        = resource.type.name,
+                                description = resource.description,
+                                link        = resource.link
+                            )
+                            val saved = educationRepository.saveToLibrary(remote)
+                            if (saved) {
+                                onResourceSaved(remote)
+                                saveMessage = "\"${resource.title}\" salvo na sua biblioteca!" to true
+                            } else {
+                                saveMessage = "Você já salvou este recurso." to false
+                            }
+                        } catch (_: Exception) {
+                            saveMessage = "Erro ao salvar. Verifique sua conexão." to false
+                        } finally {
+                            savingRecommendation = false
+                            selectedRecommendation = null
+                        }
+                    }
+                },
+                onDismiss = { selectedRecommendation = null }
+            )
+        }
+    }
+}
+
+@Composable
+private fun RecommendationCard(
+    resource: EducationalResource,
+    onClick: () -> Unit
+) {
+    val typeColor = typeAccentColorLocal(resource.type)
+
+    ElevatedCard(
+        onClick   = onClick,
+        shape     = RoundedCornerShape(14.dp),
+        modifier  = Modifier
+            .width(160.dp)
+            .height(130.dp),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+    ) {
+        Column {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(3.dp)
+                    .background(
+                        androidx.compose.ui.graphics.Brush.horizontalGradient(
+                            listOf(typeColor, typeColor.copy(alpha = 0.3f))
+                        )
+                    )
+            )
+            Column(
+                modifier            = Modifier
+                    .padding(12.dp)
+                    .fillMaxHeight(),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = typeColor.copy(alpha = 0.12f)
+                ) {
+                    Text(
+                        resource.type.name,
+                        modifier   = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        style      = MaterialTheme.typography.labelSmall,
+                        color      = typeColor,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize   = 9.sp
+                    )
+                }
+                Text(
+                    resource.title,
+                    style      = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold,
+                    maxLines   = 3,
+                    overflow   = TextOverflow.Ellipsis,
+                    lineHeight = 16.sp,
+                    modifier   = Modifier.weight(1f)
+                )
+                Text(
+                    resource.author,
+                    style    = MaterialTheme.typography.labelSmall,
+                    color    = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ResourceDetailSheet(
+    resource: EducationalResource,
+    isSaving: Boolean,
+    onSave: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val context   = LocalContext.current
+    val gold      = MaterialTheme.colorScheme.primary
+    val typeColor = typeAccentColorLocal(resource.type)
+
+    Column(
+        modifier            = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .width(40.dp)
+                .height(4.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f))
+                .align(Alignment.CenterHorizontally)
+        )
+
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = typeColor.copy(alpha = 0.12f)
+        ) {
+            Text(
+                resource.type.name,
+                modifier   = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                style      = MaterialTheme.typography.labelSmall,
+                color      = typeColor,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        Text(
+            resource.title,
+            style      = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            lineHeight = 24.sp
+        )
+        Text(
+            "por ${resource.author}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+        )
+
+        if (resource.description.isNotEmpty()) {
+            Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
+            Text(
+                resource.description,
+                style      = MaterialTheme.typography.bodyMedium,
+                color      = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
+                lineHeight = 21.sp
+            )
+        }
+
+        Row(
+            modifier              = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            OutlinedButton(
+                onClick        = onSave,
+                enabled        = !isSaving,
+                modifier       = Modifier.weight(1f),
+                shape          = RoundedCornerShape(10.dp),
+                colors         = ButtonDefaults.outlinedButtonColors(contentColor = gold),
+                border         = BorderStroke(1.dp, gold.copy(alpha = 0.5f)),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
+            ) {
+                if (isSaving) {
+                    CircularProgressIndicator(
+                        modifier    = Modifier.size(14.dp),
+                        strokeWidth = 2.dp,
+                        color       = gold
+                    )
+                } else {
+                    Icon(Icons.Outlined.BookmarkAdd, null, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(5.dp))
+                    Text("Salvar", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+            if (resource.link.isNotEmpty()) {
+                Button(
+                    onClick = {
+                        try {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(resource.link)))
+                        } catch (_: Exception) {}
+                        onDismiss()
+                    },
+                    modifier       = Modifier.weight(1f),
+                    shape          = RoundedCornerShape(10.dp),
+                    colors         = ButtonDefaults.buttonColors(
+                        containerColor = gold,
+                        contentColor   = Color(0xFF121212)
+                    ),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
+                ) {
+                    Icon(Icons.Outlined.OpenInNew, null, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(5.dp))
+                    Text("Acessar", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
     }
 }
 
