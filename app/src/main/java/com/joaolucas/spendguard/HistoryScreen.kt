@@ -342,12 +342,6 @@ fun HistoryScreen(
                             style      = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold
                         )
-                        Spacer(Modifier.weight(1f))
-                        Text(
-                            "Para Você",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                        )
                     }
                     androidx.compose.foundation.lazy.LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -423,7 +417,16 @@ fun HistoryScreen(
                                 )
                                 Spacer(Modifier.width(6.dp))
                                 Text(
-                                    text       = if (selectedPeriod == PeriodFilter.ALL) "Período" else selectedPeriod.label,
+                                    text       = when (selectedPeriod) {
+                                        PeriodFilter.ALL -> "Período"
+                                        PeriodFilter.CUSTOM -> {
+                                            if (customStart != null && customEnd != null) {
+                                                val sdf = java.text.SimpleDateFormat("dd/MM/yy", java.util.Locale.getDefault())
+                                                "De: ${sdf.format(java.util.Date(customStart!!))}, Até: ${sdf.format(java.util.Date(customEnd!!))}"
+                                            } else "Personalizado"
+                                        }
+                                        else -> selectedPeriod.label
+                                    },
                                     fontSize   = 12.sp,
                                     maxLines   = 1,
                                     softWrap   = false,
@@ -463,13 +466,13 @@ fun HistoryScreen(
                                                         calNow.get(Calendar.MONTH),
                                                         calNow.get(Calendar.DAY_OF_MONTH)
                                                     )
-                                                    endPicker.setTitle("Até: selecione a data final")
+                                                    endPicker.setTitle("Até:")
                                                     endPicker.show()
                                                 },
                                                 calNow.get(Calendar.YEAR),
                                                 calNow.get(Calendar.MONTH),
                                                 calNow.get(Calendar.DAY_OF_MONTH)
-                                            ).also { it.setTitle("De: selecione a data inicial") }.show()
+                                            ).also { it.setTitle("De:") }.show()
                                         } else {
                                             selectedPeriod = period
                                             customStart = null
