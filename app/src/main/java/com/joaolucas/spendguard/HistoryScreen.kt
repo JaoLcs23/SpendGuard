@@ -6,7 +6,11 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -50,10 +54,12 @@ enum class PeriodFilter(val label: String) {
 fun HistoryScreen(
     database: SpendGuardDatabase,
     userRepository: UserRepository,
+    educationRepository: EducationRepository,
     proManager: ProManager,
     onOpenImport: () -> Unit,
     onShowPaywall: () -> Unit
 ) {
+    val isPro by proManager.isPro.collectAsState()
     val currentUserId = userRepository.getCurrentUserId() ?: ""
     val purchases by database.purchaseDao()
         .getPurchasesByUser(currentUserId)
@@ -74,6 +80,11 @@ fun HistoryScreen(
     var exportLoading         by remember { mutableStateOf(false) }
     var editingPurchase       by remember { mutableStateOf<PurchaseEntity?>(null) }
     var expandedCardId        by remember { mutableStateOf(-1) }
+
+    val recommendations       = remember(purchases) { ContentRecommender.recommend(purchases, EducationLibrary.resources) }
+    var selectedRecommendation by remember { mutableStateOf<EducationalResource?>(null) }
+    var savingRecommendation   by remember { mutableStateOf(false) }
+    var saveMessage            by remember { mutableStateOf<Pair<String, Boolean>?>(null) }
 
     val prefs      = remember { context.getSharedPreferences("spendguard_prefs", Context.MODE_PRIVATE) }
 
@@ -127,15 +138,7 @@ fun HistoryScreen(
             .associate { it.key to it.value }
     }
 
-    val jitSuggestion: Pair<SpendingCategory, EducationalResource>? = remember(categoryBreakdown) {
-        val total = categoryBreakdown.values.sum()
-        if (total < JIT_MIN_TOTAL) return@remember null
-        val dominant = categoryBreakdown.entries.firstOrNull { (_, amount) ->
-            (amount / total).toFloat() >= JIT_DOMINANT_THRESHOLD
-        } ?: return@remember null
-        val resource = jitResourceFor(dominant.key) ?: return@remember null
-        dominant.key to resource
-    }
+
 
     if (showClearDialog) {
         AlertDialog(
@@ -317,17 +320,47 @@ fun HistoryScreen(
             }
         }
 
-        jitSuggestion?.let { (dominantCategory, resource) ->
+        if (recommendations.isNotEmpty()) {
             item {
-                JitLearningCard(
-                    category = dominantCategory,
-                    resource = resource,
-                    context  = context,
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .padding(bottom = 8.dp)
-                )
+                        .padding(bottom = 16.dp)
+                ) {
+                    Row(
+                        verticalAlignment     = Alignment.CenterVertically,
+                        modifier              = Modifier.padding(horizontal = 16.dp).padding(bottom = 10.dp)
+                    ) {
+                        Icon(
+                            Icons.Outlined.AutoAwesome, null,
+                            tint     = gold,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            "Aprendizado no momento certo",
+                            style      = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.weight(1f))
+                        Text(
+                            "Para Você",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                        )
+                    }
+                    androidx.compose.foundation.lazy.LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        contentPadding        = PaddingValues(horizontal = 16.dp)
+                    ) {
+                        items(recommendations, key = { it.title + "_rec" }) { resource ->
+                            RecommendationCard(
+                                resource = resource,
+                                onClick  = { selectedRecommendation = resource }
+                            )
+                        }
+                    }
+                }
             }
         }
 
@@ -508,10 +541,10 @@ fun HistoryScreen(
                     ActionButton(
                         icon    = Icons.Outlined.FileDownload,
                         label   = "Exportar",
-                        tint    = if (proManager.isPro.value) MaterialTheme.colorScheme.onSurfaceVariant
+                        tint    = if (isPro) MaterialTheme.colorScheme.onSurfaceVariant
                                   else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                         onClick = {
-                            if (!proManager.isPro.value) { onShowPaywall(); return@ActionButton }
+                            if (!isPro) { onShowPaywall(); return@ActionButton }
                             exportLoading = true
                             scope.launch {
                                 exportToCsv(context, purchases)
@@ -523,9 +556,9 @@ fun HistoryScreen(
                     ActionButton(
                         icon    = Icons.Outlined.FileUpload,
                         label   = "Importar",
-                        tint    = if (proManager.isPro.value) MaterialTheme.colorScheme.onSurfaceVariant
+                        tint    = if (isPro) MaterialTheme.colorScheme.onSurfaceVariant
                                   else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                        onClick = { if (!proManager.isPro.value) onShowPaywall() else onOpenImport() }
+                        onClick = { if (!isPro) onShowPaywall() else onOpenImport() }
                     )
 
                     ActionButton(
@@ -590,131 +623,44 @@ fun HistoryScreen(
 
         item { Spacer(modifier = Modifier.height(16.dp)) }
     }
-}
 
-@Composable
-private fun JitLearningCard(
-    category: SpendingCategory,
-    resource: EducationalResource,
-    context: android.content.Context,
-    modifier: Modifier = Modifier
-) {
-    val accentColor = Color(category.color)
-    val gold        = MaterialTheme.colorScheme.primary
-
-    Card(
-        modifier = modifier,
-        shape    = RoundedCornerShape(12.dp),
-        colors   = CardDefaults.cardColors(
-            containerColor = accentColor.copy(alpha = 0.08f)
-        )
-    ) {
-        Column(
-            modifier            = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+    selectedRecommendation?.let { resource ->
+        ModalBottomSheet(
+            onDismissRequest = { selectedRecommendation = null },
+            sheetState       = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ) {
-            Row(
-                verticalAlignment     = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = accentColor.copy(alpha = 0.15f),
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            Icons.Outlined.Lightbulb, null,
-                            tint     = accentColor,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "Aprendizado no momento certo",
-                        style      = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color      = accentColor
-                    )
-                    Text(
-                        "${category.label} representa seu maior gasto — veja isso:",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
-                }
-            }
-
-            Divider(color = accentColor.copy(alpha = 0.15f))
-
-            Text(
-                resource.title,
-                style      = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.ExtraBold,
-                color      = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                "por ${resource.author}",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
-            )
-            if (resource.description.isNotEmpty()) {
-                Text(
-                    resource.description,
-                    style      = MaterialTheme.typography.bodySmall,
-                    color      = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                    lineHeight = 17.sp,
-                    maxLines   = 3,
-                    overflow   = TextOverflow.Ellipsis
-                )
-            }
-
-            if (resource.link.isNotEmpty()) {
-                Button(
-                    onClick = {
+            ResourceDetailSheet(
+                resource  = resource,
+                isSaving  = savingRecommendation,
+                onSave    = {
+                    savingRecommendation = true
+                    scope.launch {
                         try {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(resource.link)))
-                        } catch (_: Exception) {}
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape    = RoundedCornerShape(8.dp),
-                    colors   = ButtonDefaults.buttonColors(
-                        containerColor = accentColor,
-                        contentColor   = Color.White
-                    ),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp)
-                ) {
-                    Icon(Icons.Outlined.OpenInNew, null, modifier = Modifier.size(14.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Acessar conteúdo", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                }
-            }
+                            val remote = EducationalResourceRemote(
+                                userId      = currentUserId,
+                                title       = resource.title,
+                                author      = resource.author,
+                                type        = resource.type.name,
+                                description = resource.description,
+                                link        = resource.link
+                            )
+                            val saved = educationRepository.saveToLibrary(remote)
+                            if (saved) {
+                                saveMessage = "\"${resource.title}\" salvo na sua biblioteca!" to true
+                            } else {
+                                saveMessage = "Você já salvou este recurso." to false
+                            }
+                        } catch (_: Exception) {
+                            saveMessage = "Erro ao salvar. Verifique sua conexão." to false
+                        } finally {
+                            savingRecommendation = false
+                            selectedRecommendation = null
+                        }
+                    }
+                },
+                onDismiss = { selectedRecommendation = null }
+            )
         }
-    }
-}
-
-private fun jitResourceFor(category: SpendingCategory): EducationalResource? {
-    val all = EducationLibrary.resources
-    return when (category) {
-        SpendingCategory.ALIMENTACAO  -> all.firstOrNull { it.title.contains("mercado", ignoreCase = true) }
-            ?: all.firstOrNull { it.type == ResourceType.VIDEO }
-        SpendingCategory.LAZER        -> all.firstOrNull { it.title.contains("vida", ignoreCase = true) }
-            ?: all.firstOrNull { it.type == ResourceType.VIDEO }
-        SpendingCategory.VESTUARIO    -> all.firstOrNull { it.title.contains("impulso", ignoreCase = true) }
-            ?: all.firstOrNull { it.title.contains("Psicologia", ignoreCase = true) }
-        SpendingCategory.TECNOLOGIA   -> all.firstOrNull { it.title.contains("carro", ignoreCase = true) }
-            ?: all.firstOrNull { it.type == ResourceType.VIDEO }
-        SpendingCategory.ASSINATURAS  -> all.firstOrNull { it.title.contains("salário", ignoreCase = true) }
-            ?: all.firstOrNull { it.type == ResourceType.VIDEO }
-        SpendingCategory.TRANSPORTE   -> all.firstOrNull { it.title.contains("carro", ignoreCase = true) }
-        SpendingCategory.CASA         -> all.firstOrNull { it.title.contains("imóvel", ignoreCase = true) }
-            ?: all.firstOrNull { it.title.contains("FII", ignoreCase = true) }
-        SpendingCategory.SAUDE        -> all.firstOrNull { it.title.contains("reserva", ignoreCase = true) }
-            ?: all.firstOrNull { it.title.contains("Psicologia", ignoreCase = true) }
-        SpendingCategory.EDUCACAO     -> all.firstOrNull { it.type == ResourceType.CURSO }
-            ?: all.firstOrNull { it.type == ResourceType.LIVRO }
-        SpendingCategory.OUTROS       -> all.firstOrNull { it.title.contains("Homem Mais Rico", ignoreCase = true) }
-            ?: all.firstOrNull { it.type == ResourceType.LIVRO }
     }
 }
 
@@ -1088,5 +1034,194 @@ fun PurchaseHistoryCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun RecommendationCard(
+    resource: EducationalResource,
+    onClick: () -> Unit
+) {
+    val typeColor = typeAccentColorLocal(resource.type)
+
+    ElevatedCard(
+        onClick   = onClick,
+        shape     = RoundedCornerShape(14.dp),
+        modifier  = Modifier
+            .width(160.dp)
+            .height(130.dp),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+    ) {
+        Column {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(3.dp)
+                    .background(
+                        androidx.compose.ui.graphics.Brush.horizontalGradient(
+                            listOf(typeColor, typeColor.copy(alpha = 0.3f))
+                        )
+                    )
+            )
+            Column(
+                modifier            = Modifier
+                    .padding(12.dp)
+                    .fillMaxHeight(),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = typeColor.copy(alpha = 0.12f)
+                ) {
+                    Text(
+                        resource.type.name,
+                        modifier   = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        style      = MaterialTheme.typography.labelSmall,
+                        color      = typeColor,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize   = 9.sp
+                    )
+                }
+                Text(
+                    resource.title,
+                    style      = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold,
+                    maxLines   = 3,
+                    overflow   = TextOverflow.Ellipsis,
+                    lineHeight = 16.sp,
+                    modifier   = Modifier.weight(1f)
+                )
+                Text(
+                    resource.author,
+                    style    = MaterialTheme.typography.labelSmall,
+                    color    = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ResourceDetailSheet(
+    resource: EducationalResource,
+    isSaving: Boolean,
+    onSave: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val context   = LocalContext.current
+    val gold      = MaterialTheme.colorScheme.primary
+    val typeColor = typeAccentColorLocal(resource.type)
+
+    Column(
+        modifier            = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .width(40.dp)
+                .height(4.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f))
+                .align(Alignment.CenterHorizontally)
+        )
+
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = typeColor.copy(alpha = 0.12f)
+        ) {
+            Text(
+                resource.type.name,
+                modifier   = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                style      = MaterialTheme.typography.labelSmall,
+                color      = typeColor,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        Text(
+            resource.title,
+            style      = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            lineHeight = 24.sp
+        )
+        Text(
+            "por ${resource.author}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+        )
+
+        if (resource.description.isNotEmpty()) {
+            Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
+            Text(
+                resource.description,
+                style      = MaterialTheme.typography.bodyMedium,
+                color      = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
+                lineHeight = 21.sp
+            )
+        }
+
+        Row(
+            modifier              = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            OutlinedButton(
+                onClick        = onSave,
+                enabled        = !isSaving,
+                modifier       = Modifier.weight(1f),
+                shape          = RoundedCornerShape(10.dp),
+                colors         = ButtonDefaults.outlinedButtonColors(contentColor = gold),
+                border         = BorderStroke(1.dp, gold.copy(alpha = 0.5f)),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
+            ) {
+                if (isSaving) {
+                    CircularProgressIndicator(
+                        modifier    = Modifier.size(14.dp),
+                        strokeWidth = 2.dp,
+                        color       = gold
+                    )
+                } else {
+                    Icon(Icons.Outlined.BookmarkAdd, null, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(5.dp))
+                    Text("Salvar na Biblioteca", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+            if (resource.link.isNotEmpty()) {
+                Button(
+                    onClick = {
+                        try {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(resource.link)))
+                        } catch (_: Exception) {}
+                        onDismiss()
+                    },
+                    modifier       = Modifier.weight(1f),
+                    shape          = RoundedCornerShape(10.dp),
+                    colors         = ButtonDefaults.buttonColors(
+                        containerColor = gold,
+                        contentColor   = Color(0xFF121212)
+                    ),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
+                ) {
+                    Icon(Icons.Outlined.OpenInNew, null, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(5.dp))
+                    Text("Acessar", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun typeAccentColorLocal(type: ResourceType): Color {
+    return when (type) {
+        ResourceType.LIVRO  -> Color(0xFF4CAF50)
+        ResourceType.VIDEO  -> Color(0xFFF44336)
+        ResourceType.ARTIGO -> Color(0xFF2196F3)
+        ResourceType.CURSO  -> Color(0xFFFF9800)
+        ResourceType.SITE   -> Color(0xFF9C27B0)
     }
 }

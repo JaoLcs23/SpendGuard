@@ -607,11 +607,12 @@ fun MainScreen(
                     onNavigate           = { destination -> currentView = destination }
                 )
                 ViewState.HISTORY -> HistoryScreen(
-                    database       = database,
-                    userRepository = userRepository,
-                    proManager     = proManager,
-                    onOpenImport   = { currentView = ViewState.IMPORT },
-                    onShowPaywall  = { currentView = ViewState.PAYWALL }
+                    database            = database,
+                    userRepository      = userRepository,
+                    educationRepository = educationRepository,
+                    proManager          = proManager,
+                    onOpenImport        = { currentView = ViewState.IMPORT },
+                    onShowPaywall       = { currentView = ViewState.PAYWALL }
                 )
                 ViewState.SETTINGS -> SettingsScreen(
                     database         = database,
