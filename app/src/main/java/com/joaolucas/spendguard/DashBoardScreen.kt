@@ -248,7 +248,7 @@ fun DashboardScreen(
                         trackColor = gold.copy(alpha = 0.15f)
                     )
                     if (progress >= 1f) {
-                        Text("🎉 Meta atingida! Parabéns pelo autocontrole.",
+                        Text("Meta atingida! Parabéns pelo autocontrole.",
                             style = MaterialTheme.typography.bodySmall,
                             color = Color(0xFF81C784), fontWeight = FontWeight.Bold)
                     }
@@ -263,17 +263,19 @@ fun DashboardScreen(
                 color = gold.copy(alpha = 0.1f)
             ) {
                 Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (streak >= 7) "🔥" else "⚡", fontSize = 20.sp)
+                    Text(if (streak >= 7) "" else "", fontSize = 20.sp)
                     Spacer(Modifier.width(10.dp))
+                    Icon(Icons.Outlined.LocalFireDepartment, null, tint = gold, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(20.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text("$streak dia${if (streak > 1) "s" else ""} sem impulso",
                             style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold, color = gold)
-                        Text("Continue resistindo para manter sua sequência.",
+                            fontWeight = FontWeight.Bold, color = gold,
+                        )
+                        Text("Continue resistindo para manter sua sequência",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Icon(Icons.Outlined.LocalFireDepartment, null, tint = gold, modifier = Modifier.size(20.dp))
                 }
             }
         }

@@ -1,4 +1,4 @@
-# SpendGuard 🛡️
+# SpendGuard
 
 **Seu guardião financeiro pessoal — com Inteligência Artificial**
 

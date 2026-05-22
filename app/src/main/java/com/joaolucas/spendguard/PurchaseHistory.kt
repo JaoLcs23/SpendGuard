@@ -64,6 +64,16 @@ interface PurchaseDao {
 
     @Query("DELETE FROM purchase_history")
     suspend fun deleteAll()
+
+    @Query("""
+        SELECT * FROM purchase_history
+        WHERE (LOWER(itemName) LIKE '%' || LOWER(:name) || '%'
+           OR LOWER(:name) LIKE '%' || LOWER(itemName) || '%')
+        AND timestamp > :since
+        ORDER BY timestamp DESC
+        LIMIT 1
+    """)
+    suspend fun findSimilarRecentPurchase(name: String, since: Long): PurchaseEntity?
 }
 
 val MIGRATION_3_4 = object : Migration(3, 4) {

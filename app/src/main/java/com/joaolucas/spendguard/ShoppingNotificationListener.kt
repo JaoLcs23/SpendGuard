@@ -3,7 +3,10 @@ package com.joaolucas.spendguard
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
@@ -105,16 +108,54 @@ class ShoppingNotificationListener : NotificationListenerService() {
         "entrada de", "crédito de", "credito de"
     )
 
+    private val ignoreKeywords = listOf(
+        "nota fiscal", "nf-e", "danfe", "chave de acesso", "xml da nota",
+        "nota fiscal eletrônica", "segunda via", "nota fiscal disponível",
+        "nfe disponível", "acesse sua nota", "oferta especial", "aproveite", "não perca", "exclusivo para você",
+        "cupom de desconto", "promoção relâmpago", "% de desconto", "% off",
+        "últimas unidades", "ver oferta", "ver promoção", "confira as ofertas",
+        "você tem um cupom", "resgate seu cupom", "use o cupom",
+        "melhor preço", "preço baixou", "seu pedido foi entregue", "entregue com sucesso", "retirar na agência",
+        "saiu para entrega", "objeto entregue", "em rota de entrega",
+        "previsão de entrega", "objeto postado", "avalie sua compra", "como foi sua experiência", "deixe sua avaliação",
+        "avalie o produto", "sua opinião", "acesso à sua conta", "redefinir senha", "código de verificação",
+        "bem-vindo", "cadastro realizado"
+    )
+
     companion object {
         const val CHANNEL_ID      = "shopping_reflection"
         const val CHANNEL_ID_PIX  = "pix_reflection"
         const val ACTION_IGNORE   = "com.joaolucas.spendguard.ACTION_IGNORE"
+        const val EXTRA_NOTIF_ID  = "notif_id"
         private const val MAX_NOTIFICATION_TEXT_LENGTH = 500
+    }
+
+    private var isReceiverRegistered = false
+
+    private val ignoreReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == ACTION_IGNORE) {
+                val notifId = intent.getIntExtra(EXTRA_NOTIF_ID, -1)
+                if (notifId != -1) {
+                    context.getSystemService(NotificationManager::class.java)?.cancel(notifId)
+                }
+            }
+        }
     }
 
     override fun onListenerConnected() {
         super.onListenerConnected()
         activeNotifications?.forEach { processedKeys.add(it.key) }
+        if (!isReceiverRegistered) {
+            val filter = IntentFilter(ACTION_IGNORE)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(ignoreReceiver, filter, RECEIVER_NOT_EXPORTED)
+            } else {
+                @Suppress("UnspecifiedRegisterReceiverFlag")
+                registerReceiver(ignoreReceiver, filter)
+            }
+            isReceiverRegistered = true
+        }
     }
 
     override fun onListenerDisconnected() {
@@ -124,6 +165,10 @@ class ShoppingNotificationListener : NotificationListenerService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        if (isReceiverRegistered) {
+            try { unregisterReceiver(ignoreReceiver) } catch (_: Exception) {}
+            isReceiverRegistered = false
+        }
         serviceScope.cancel()
     }
 
@@ -140,6 +185,8 @@ class ShoppingNotificationListener : NotificationListenerService() {
         val text    = extras.getCharSequence("android.text")?.toString() ?: ""
         val bigText = extras.getCharSequence("android.bigText")?.toString() ?: ""
         val fullText = "$title $text $bigText".lowercase()
+
+        if (ignoreKeywords.any { fullText.contains(it) }) return
 
         val rawText = "$title. $text. $bigText"
             .trim()
@@ -183,10 +230,19 @@ class ShoppingNotificationListener : NotificationListenerService() {
         serviceScope.launch {
             try {
                 val purchaseInfo = geminiService.extractPurchaseInfo(rawText)
+                val itemName = purchaseInfo?.itemName ?: "Compra detectada"
+                val price    = purchaseInfo?.price ?: 0.0
+
+                if (itemName != "Compra detectada") {
+                    val since = System.currentTimeMillis() - 48L * 60 * 60 * 1000
+                    val db = SpendGuardDatabase.getDatabase(applicationContext)
+                    if (db.purchaseDao().findSimilarRecentPurchase(itemName, since) != null) return@launch
+                }
+
                 showShoppingNotification(
                     store    = storeName,
-                    itemName = purchaseInfo?.itemName ?: "Compra detectada",
-                    price    = purchaseInfo?.price ?: 0.0
+                    itemName = itemName,
+                    price    = price
                 )
             } catch (_: Exception) { }
         }
@@ -227,7 +283,7 @@ class ShoppingNotificationListener : NotificationListenerService() {
         )
         val ignorePi = PendingIntent.getBroadcast(
             this, notifId + 1,
-            Intent(ACTION_IGNORE).setPackage(packageName),
+            Intent(ACTION_IGNORE).setPackage(packageName).putExtra(EXTRA_NOTIF_ID, notifId),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
@@ -269,7 +325,7 @@ class ShoppingNotificationListener : NotificationListenerService() {
         )
         val ignorePi = PendingIntent.getBroadcast(
             this, notifId + 1,
-            Intent(ACTION_IGNORE).setPackage(packageName),
+            Intent(ACTION_IGNORE).setPackage(packageName).putExtra(EXTRA_NOTIF_ID, notifId),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
