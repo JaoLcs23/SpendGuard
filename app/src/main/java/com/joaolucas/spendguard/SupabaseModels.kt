@@ -15,7 +15,6 @@ data class UserProfile(
 
 @Serializable
 data class WeeklyUsage(
-    val id: String? = null,
     @SerialName("user_id") val userId: String,
     @SerialName("week_key") val weekKey: String,
     @SerialName("guardian_uses") val guardianUses: Int = 0,
@@ -24,7 +23,6 @@ data class WeeklyUsage(
 
 @Serializable
 data class PurchaseRemote(
-    val id: String? = null,
     @SerialName("user_id") val userId: String,
     @SerialName("item_name") val itemName: String,
     val price: Double,

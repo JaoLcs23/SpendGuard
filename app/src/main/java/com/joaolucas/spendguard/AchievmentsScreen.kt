@@ -137,7 +137,7 @@ fun AchievementCard(achievement: Achievement, unlocked: Boolean) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(180.dp),
+            .height(220.dp),
         shape    = RoundedCornerShape(18.dp),
         colors   = CardDefaults.cardColors(
             containerColor = when {

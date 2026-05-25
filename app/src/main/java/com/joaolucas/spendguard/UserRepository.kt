@@ -1,5 +1,6 @@
 package com.joaolucas.spendguard
 
+import android.util.Log
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.providers.Google
 import io.github.jan.supabase.gotrue.providers.builtin.Email
@@ -230,8 +231,13 @@ class UserRepository {
     }
 
     suspend fun syncPurchase(purchase: PurchaseEntity) {
+        val userId = getCurrentUserId()
+        if (userId == null) {
+            Log.w("UserRepository", "syncPurchase: userId is null, skipping")
+            return
+        }
         try {
-            val userId = getCurrentUserId() ?: return
+            Log.d("UserRepository", "syncPurchase: uploading '${purchase.itemName}' for user $userId")
             client.postgrest["purchases"].insert(
                 PurchaseRemote(
                     userId         = userId,
@@ -245,6 +251,9 @@ class UserRepository {
                     category       = purchase.category
                 )
             )
-        } catch (_: Exception) { }
+            Log.d("UserRepository", "syncPurchase: SUCCESS for '${purchase.itemName}'")
+        } catch (e: Exception) {
+            Log.e("UserRepository", "syncPurchase: FAILED for '${purchase.itemName}'", e)
+        }
     }
 }

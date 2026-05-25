@@ -1,6 +1,7 @@
 package com.joaolucas.spendguard
 
 import android.content.Context
+import android.util.Log
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import kotlinx.coroutines.Dispatchers
@@ -19,68 +20,103 @@ class DataSyncManager(
 ) {
     private val client = SupabaseClient.client
 
+    companion object {
+        private const val TAG = "DataSyncManager"
+    }
+
+    /**
+     * Download all user data from Supabase into local storage.
+     * Called once when the user opens the app after login.
+     */
     suspend fun syncDownload() {
         withContext(Dispatchers.IO) {
-            val userId = userRepository.getCurrentUserId() ?: return@withContext
+            val userId = userRepository.getCurrentUserId()
+            if (userId == null) {
+                Log.w(TAG, "syncDownload: userId is null, skipping")
+                return@withContext
+            }
+            Log.d(TAG, "syncDownload: starting for user $userId")
 
+            // --- Download purchases ---
             try {
                 val remotePurchases = client.postgrest["purchases"]
                     .select(Columns.ALL) { filter { eq("user_id", userId) } }
                     .decodeList<PurchaseRemote>()
 
-                val localPurchases = purchaseDao.getPurchasesByUserDirect(userId)
-                val localIds = localPurchases.map { "${it.timestamp}_${it.itemName}" }.toSet()
+                Log.d(TAG, "syncDownload: got ${remotePurchases.size} remote purchases")
 
+                val localPurchases = purchaseDao.getPurchasesByUserDirect(userId)
+                val localKeys = localPurchases.map { "${it.timestamp}_${it.itemName}" }.toSet()
+
+                var insertedCount = 0
                 for (remote in remotePurchases) {
                     val key = "${remote.timestamp}_${remote.itemName}"
-                    if (!localIds.contains(key)) {
-                        val newEntity = PurchaseEntity(
-                            userId = remote.userId,
-                            itemName = remote.itemName,
-                            price = remote.price,
-                            justification = remote.justification ?: "",
-                            wasBlocked = remote.wasBlocked,
-                            aiMessage = remote.aiMessage ?: "",
-                            coolingOffTime = remote.coolingOffTime,
-                            timestamp = remote.timestamp,
-                            category = remote.category
+                    if (!localKeys.contains(key)) {
+                        purchaseDao.insert(
+                            PurchaseEntity(
+                                userId = remote.userId,
+                                itemName = remote.itemName,
+                                price = remote.price,
+                                justification = remote.justification ?: "",
+                                wasBlocked = remote.wasBlocked,
+                                aiMessage = remote.aiMessage ?: "",
+                                coolingOffTime = remote.coolingOffTime,
+                                timestamp = remote.timestamp,
+                                category = remote.category
+                            )
                         )
-                        purchaseDao.insert(newEntity)
+                        insertedCount++
                     }
                 }
+                Log.d(TAG, "syncDownload: inserted $insertedCount new purchases locally")
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e(TAG, "syncDownload: FAILED to download purchases", e)
             }
 
+            // --- Download user_data (streak, goals, achievements, etc.) ---
             try {
                 val remoteData = client.postgrest["user_data"]
                     .select(Columns.ALL) { filter { eq("user_id", userId) } }
                     .decodeSingleOrNull<UserDataRemote>()
 
                 if (remoteData != null) {
+                    Log.d(TAG, "syncDownload: found user_data, restoring...")
                     streakManager.setStreakCount(remoteData.streakCount)
                     streakManager.setStreakLastDay(remoteData.streakLastDay)
-
                     goalManager.setMonthlyGoalBits(remoteData.monthlyGoalBits)
-
                     intentionsManager.setIntention(remoteData.currentIntention)
 
-                    val achJson = JSONObject(remoteData.achievementsJson)
-                    achievementsManager.restoreFromJson(achJson)
+                    try {
+                        val achJson = JSONObject(remoteData.achievementsJson)
+                        achievementsManager.restoreFromJson(achJson)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "syncDownload: failed to parse achievements JSON", e)
+                    }
 
                     profileManager.restoreFromJson(remoteData.profileJson)
+                    Log.d(TAG, "syncDownload: user_data restored successfully")
                 } else {
+                    Log.d(TAG, "syncDownload: no user_data found, uploading current state")
                     syncUpload()
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e(TAG, "syncDownload: FAILED to download user_data", e)
             }
         }
     }
 
+    /**
+     * Upload current local state to Supabase.
+     * Called when local data changes (achievements, streak, etc.)
+     */
     suspend fun syncUpload() {
         withContext(Dispatchers.IO) {
-            val userId = userRepository.getCurrentUserId() ?: return@withContext
+            val userId = userRepository.getCurrentUserId()
+            if (userId == null) {
+                Log.w(TAG, "syncUpload: userId is null, skipping")
+                return@withContext
+            }
+            Log.d(TAG, "syncUpload: starting for user $userId")
 
             try {
                 val userData = UserDataRemote(
@@ -98,8 +134,10 @@ class DataSyncManager(
                     .decodeSingleOrNull<UserDataRemote>()
 
                 if (existing == null) {
+                    Log.d(TAG, "syncUpload: no existing record, inserting")
                     client.postgrest["user_data"].insert(userData)
                 } else {
+                    Log.d(TAG, "syncUpload: updating existing record")
                     client.postgrest["user_data"].update(
                         mapOf(
                             "streak_count" to userData.streakCount,
@@ -111,8 +149,43 @@ class DataSyncManager(
                         )
                     ) { filter { eq("user_id", userId) } }
                 }
+                Log.d(TAG, "syncUpload: success")
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e(TAG, "syncUpload: FAILED", e)
+            }
+
+            // --- Also upload any local purchases not yet in the cloud ---
+            try {
+                val localPurchases = purchaseDao.getPurchasesByUserDirect(userId)
+                val remotePurchases = client.postgrest["purchases"]
+                    .select(Columns.ALL) { filter { eq("user_id", userId) } }
+                    .decodeList<PurchaseRemote>()
+
+                val remoteKeys = remotePurchases.map { "${it.timestamp}_${it.itemName}" }.toSet()
+
+                var uploadedCount = 0
+                for (local in localPurchases) {
+                    val key = "${local.timestamp}_${local.itemName}"
+                    if (!remoteKeys.contains(key)) {
+                        client.postgrest["purchases"].insert(
+                            PurchaseRemote(
+                                userId = userId,
+                                itemName = local.itemName,
+                                price = local.price,
+                                justification = local.justification,
+                                wasBlocked = local.wasBlocked,
+                                aiMessage = local.aiMessage,
+                                coolingOffTime = local.coolingOffTime,
+                                timestamp = local.timestamp,
+                                category = local.category
+                            )
+                        )
+                        uploadedCount++
+                    }
+                }
+                Log.d(TAG, "syncUpload: uploaded $uploadedCount missing purchases")
+            } catch (e: Exception) {
+                Log.e(TAG, "syncUpload: FAILED to upload purchases", e)
             }
         }
     }

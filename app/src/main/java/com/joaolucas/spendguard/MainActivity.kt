@@ -415,9 +415,24 @@ fun MainScreen(
     val profileManager         = remember { ProfileManager(context) }
     val dataSyncManager        = remember { DataSyncManager(context, userRepository, database.purchaseDao(), achievementsManager, streakManager, goalManager, intentionsManager, profileManager) }
 
+    var isSyncCompleted by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
         dataSyncManager.syncDownload()
+        isSyncCompleted = true
     }
+
+    if (isSyncCompleted && !profileManager.isComplete()) {
+        ProfileScreen(
+            profileManager = profileManager,
+            isOnboarding   = true,
+            onDone         = { 
+                scope.launch { dataSyncManager.syncUpload() }
+            }
+        )
+        return
+    }
+
 
     var autoItemName  by remember { mutableStateOf("") }
     var autoItemPrice by remember { mutableStateOf(0.0) }
@@ -683,8 +698,10 @@ fun MainScreen(
                     userRepository   = userRepository,
                     themeManager     = themeManager,
                     goalManager      = goalManager,
+                    dataSyncManager  = dataSyncManager,
                     onSignOut        = onSignOut,
-                    onOpenOnboarding = { showOnboardingOverlay = true }
+                    onOpenOnboarding = { showOnboardingOverlay = true },
+                    onProfileChanged = { scope.launch { dataSyncManager.syncUpload() } }
                 )
                 ViewState.ACHIEVEMENTS -> AchievementsScreen(
                     achievementsManager = achievementsManager,

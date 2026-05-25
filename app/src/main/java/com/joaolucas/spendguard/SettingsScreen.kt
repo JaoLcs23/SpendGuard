@@ -34,8 +34,10 @@ fun SettingsScreen(
     userRepository: UserRepository,
     themeManager: ThemeManager,
     goalManager: GoalManager,
+    dataSyncManager: DataSyncManager,
     onSignOut: () -> Unit,
-    onOpenOnboarding: () -> Unit
+    onOpenOnboarding: () -> Unit,
+    onProfileChanged: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -318,6 +320,9 @@ fun SettingsScreen(
                         onClick = {
                             showSignOutDialog = false
                             scope.launch {
+                                // Upload data to cloud BEFORE signing out
+                                dataSyncManager.syncUpload()
+                                
                                 userRepository.signOut()
                                 proManager.deactivatePro()
 
@@ -658,7 +663,10 @@ fun SettingsScreen(
         ProfileScreen(
             profileManager = profileManager,
             isOnboarding   = false,
-            onDone         = { showProfileScreen = false }
+            onDone         = { 
+                onProfileChanged()
+                showProfileScreen = false 
+            }
         )
         return
     }
