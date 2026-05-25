@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
@@ -412,6 +413,35 @@ fun MainScreen(
         database.purchaseDao().getLastPurchaseByName(itemToReevaluate!!).collectAsState(initial = null)
     } else {
         remember { mutableStateOf(null) }
+    }
+
+    val currentUserId = remember { userRepository.getCurrentUserId() ?: "" }
+    val allPurchases by database.purchaseDao().getPurchasesByUser(currentUserId).collectAsState(initial = emptyList())
+
+    LaunchedEffect(allPurchases) {
+        if (allPurchases.isNotEmpty()) {
+            achievementsManager.checkAfterAnalysis(allPurchases, isPix = false)
+        }
+    }
+
+    val newlyUnlocked by achievementsManager.newlyUnlocked.collectAsState()
+    if (newlyUnlocked != null) {
+        AlertDialog(
+            onDismissRequest = { achievementsManager.consumeNewlyUnlocked() },
+            icon = { Icon(newlyUnlocked!!.icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp)) },
+            title = { Text("Conquista Desbloqueada!", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(newlyUnlocked!!.title, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Text(newlyUnlocked!!.description, textAlign = TextAlign.Center)
+                }
+            },
+            confirmButton = {
+                Button(onClick = { achievementsManager.consumeNewlyUnlocked() }) {
+                    Text("Incrível!")
+                }
+            }
+        )
     }
 
     if (itemToReevaluate != null) {

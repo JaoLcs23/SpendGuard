@@ -21,6 +21,9 @@ import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.SelfImprovement
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.WorkspacePremium
+import androidx.compose.material.icons.outlined.AccountBalance
+import androidx.compose.material.icons.outlined.AcUnit
+import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.TrendingUp
 import androidx.compose.material.icons.outlined.FilterAlt
 import androidx.compose.material.icons.outlined.Category
@@ -177,11 +180,27 @@ class AchievementsManager(context: Context) {
             hint        = "Mantenha o hábito de reflexão por 7 dias consecutivos"
         ),
         Achievement(
-            id          = "challenge_30",
-            icon        = Icons.Outlined.MilitaryTech,
-            title       = "Guardião Perfeito",
-            description = "30 dias sem nenhuma compra por impulso. Disciplina financeira absoluta.",
-            hint        = "Complete o Desafio 30 Dias sem ceder a nenhum impulso",
+            id          = "saved_10000",
+            icon        = Icons.Outlined.AccountBalance,
+            title       = "Titã da Economia",
+            description = "Você já salvou mais de dez mil reais com o Guardião. Uma verdadeira fortaleza financeira.",
+            hint        = "Acumule R\$10.000 em compras que você optou por não fazer",
+            isPro       = true
+        ),
+        Achievement(
+            id          = "streak_30",
+            icon        = Icons.Outlined.AcUnit,
+            title       = "Minimalista Extremo",
+            description = "Você recusou 30 compras por impulso em sequência. Seu autocontrole é inabalável.",
+            hint        = "Resista a 30 compras por impulso consecutivas",
+            isPro       = true
+        ),
+        Achievement(
+            id          = "categories_10",
+            icon        = Icons.Outlined.Visibility,
+            title       = "Visão 360º",
+            description = "Você blindou seu dinheiro em 10 categorias diferentes. Nenhum gatilho de consumo te engana mais.",
+            hint        = "Bloqueie compras em pelo menos 10 categorias distintas",
             isPro       = true
         )
     )
@@ -206,12 +225,15 @@ class AchievementsManager(context: Context) {
             candidates.add(all.first { it.id == "streak_3" })
         if (consecutiveBlocked >= 7)
             candidates.add(all.first { it.id == "streak_7" })
+        if (consecutiveBlocked >= 30)
+            candidates.add(all.first { it.id == "streak_30" })
 
         if (savedAmount >= 50)   candidates.add(all.first { it.id == "saved_50" })
         if (savedAmount >= 100)  candidates.add(all.first { it.id == "saved_100" })
         if (savedAmount >= 500)  candidates.add(all.first { it.id == "saved_500" })
         if (savedAmount >= 1000) candidates.add(all.first { it.id == "saved_1000" })
         if (savedAmount >= 5000) candidates.add(all.first { it.id == "saved_5000" })
+        if (savedAmount >= 10000) candidates.add(all.first { it.id == "saved_10000" })
 
         if (totalAnalyses >= 10)  candidates.add(all.first { it.id == "analyst_10" })
         if (totalAnalyses >= 30)  candidates.add(all.first { it.id == "analyst_30" })
@@ -220,6 +242,8 @@ class AchievementsManager(context: Context) {
         val blockedCategories = blocked.map { it.category }.toSet()
         if (blockedCategories.size >= 5)
             candidates.add(all.first { it.id == "categories_5" })
+        if (blockedCategories.size >= 10)
+            candidates.add(all.first { it.id == "categories_10" })
 
         val categoryCount = blocked.groupingBy { it.category }.eachCount()
         if (categoryCount.any { it.value >= 3 })
@@ -250,13 +274,6 @@ class AchievementsManager(context: Context) {
     fun consumeNewlyUnlocked() { _newlyUnlocked.value = null }
     fun isUnlocked(id: String): Boolean = prefs.getBoolean("ach_$id", false)
     fun unlockedCount(): Int = all.count { isUnlocked(it.id) }
-
-    fun unlockChallenge30() {
-        if (!isUnlocked("challenge_30")) {
-            unlock("challenge_30")
-            _newlyUnlocked.value = all.first { it.id == "challenge_30" }
-        }
-    }
 
     private fun unlock(id: String) = prefs.edit().putBoolean("ach_$id", true).apply()
 
