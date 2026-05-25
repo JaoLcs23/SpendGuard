@@ -40,6 +40,18 @@ class StreakManager(context: Context) {
     }
 
     fun currentStreak(): Int = prefs.getInt("streak_count", 0)
+    
+    fun getStreakCount(): Int = currentStreak()
+    fun getStreakLastDay(): String = prefs.getString("streak_last_day", "") ?: ""
+
+    fun setStreakCount(count: Int) {
+        prefs.edit().putInt("streak_count", count).apply()
+        _streak.value = count
+    }
+
+    fun setStreakLastDay(day: String) {
+        prefs.edit().putString("streak_last_day", day).apply()
+    }
 
     fun onImpulseBlocked() {
         val today = todayKey()

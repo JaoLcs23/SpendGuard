@@ -97,4 +97,10 @@ class ProfileManager(context: Context) {
     fun isComplete(): Boolean = load().isComplete
 
     fun clear() = prefs.edit().remove("profile_json").apply()
+    
+    fun toJson(): String = prefs.getString("profile_json", "{}") ?: "{}"
+    
+    fun restoreFromJson(jsonStr: String) {
+        prefs.edit().putString("profile_json", jsonStr).apply()
+    }
 }

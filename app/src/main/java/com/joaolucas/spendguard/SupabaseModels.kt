@@ -32,7 +32,20 @@ data class PurchaseRemote(
     @SerialName("was_blocked") val wasBlocked: Boolean = false,
     @SerialName("ai_message") val aiMessage: String? = null,
     @SerialName("cooling_off_time") val coolingOffTime: Int = 0,
-    val timestamp: Long
+    val timestamp: Long,
+    val category: String = ""
+)
+
+@Serializable
+data class UserDataRemote(
+    @SerialName("user_id") val userId: String,
+    @SerialName("streak_count") val streakCount: Int = 0,
+    @SerialName("streak_last_day") val streakLastDay: String = "",
+    @SerialName("monthly_goal_bits") val monthlyGoalBits: Long = 0,
+    @SerialName("current_intention") val currentIntention: String = "",
+    @SerialName("achievements_json") val achievementsJson: String = "{}",
+    @SerialName("profile_json") val profileJson: String = "{}",
+    @SerialName("updated_at") val updatedAt: String? = null
 )
 
 @Serializable

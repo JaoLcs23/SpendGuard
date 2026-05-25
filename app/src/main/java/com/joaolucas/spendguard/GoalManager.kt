@@ -58,6 +58,12 @@ class GoalManager(private val context: Context) {
             .apply()
         _monthlyGoal.value = value
     }
+    
+    fun getMonthlyGoalBits(): Long = prefs.getLong("monthly_goal_bits", java.lang.Double.doubleToLongBits(0.0))
+    fun setMonthlyGoalBits(bits: Long) {
+        prefs.edit().putLong("monthly_goal_bits", bits).apply()
+        _monthlyGoal.value = java.lang.Double.longBitsToDouble(bits)
+    }
 
     fun clearGoal() {
         prefs.edit().remove("monthly_goal_bits").apply()

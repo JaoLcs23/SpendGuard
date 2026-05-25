@@ -287,6 +287,26 @@ class AchievementsManager(context: Context) {
         }.toSet()
         return (0..6).all { daysAgo -> (today - daysAgo) in activeDays }
     }
+
+    fun clearAll() {
+        prefs.edit().clear().apply()
+    }
+    
+    fun toJson(): org.json.JSONObject {
+        val json = org.json.JSONObject()
+        for (ach in all) {
+            json.put(ach.id, isUnlocked(ach.id))
+        }
+        return json
+    }
+    
+    fun restoreFromJson(json: org.json.JSONObject) {
+        val editor = prefs.edit()
+        for (key in json.keys()) {
+            editor.putBoolean("ach_$key", json.getBoolean(key))
+        }
+        editor.apply()
+    }
 }
 
 data class Achievement(

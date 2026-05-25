@@ -41,6 +41,9 @@ interface PurchaseDao {
     @Query("SELECT * FROM purchase_history WHERE userId = :userId OR userId = '' ORDER BY timestamp DESC")
     fun getPurchasesByUser(userId: String): Flow<List<PurchaseEntity>>
 
+    @Query("SELECT * FROM purchase_history WHERE userId = :userId OR userId = '' ORDER BY timestamp DESC")
+    suspend fun getPurchasesByUserDirect(userId: String): List<PurchaseEntity>
+
     @Query("SELECT * FROM purchase_history ORDER BY timestamp DESC")
     fun getAllPurchases(): Flow<List<PurchaseEntity>>
 

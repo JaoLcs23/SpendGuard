@@ -312,7 +312,7 @@ fun SettingsScreen(
                 onDismissRequest = { showSignOutDialog = false },
                 icon  = { Icon(Icons.Outlined.Logout, null, tint = MaterialTheme.colorScheme.error) },
                 title = { Text("Sair da conta?", fontWeight = FontWeight.Bold) },
-                text  = { Text("Seus dados locais serão mantidos. Você precisará entrar novamente para sincronizar com a nuvem.") },
+                text  = { Text("Seus dados locais serão apagados deste dispositivo, mas continuarão salvos na nuvem.") },
                 confirmButton = {
                     Button(
                         onClick = {
@@ -320,6 +320,16 @@ fun SettingsScreen(
                             scope.launch {
                                 userRepository.signOut()
                                 proManager.deactivatePro()
+
+                                database.purchaseDao().deleteAll()
+                                AchievementsManager(context).clearAll()
+                                GoalManager(context).clearGoal()
+                                IntentionsManager(context).clear()
+                                ProfileManager(context).clear()
+                                val sm = StreakManager(context)
+                                sm.setStreakCount(0)
+                                sm.setStreakLastDay("")
+                                
                                 onSignOut()
                             }
                         },

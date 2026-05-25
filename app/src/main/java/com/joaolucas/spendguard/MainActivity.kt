@@ -76,6 +76,7 @@ class MainActivity : ComponentActivity() {
             SpendGuardTheme(forceDark = forceDark) {
                 val prefs          = remember { SecurePrefs.create(context, "spendguard_prefs_secure") }
                 val userRepository = remember { UserRepository() }
+                val proManager     = remember { ProManager(context) }
                 val onboardingDone = remember { prefs.getBoolean("onboarding_completed", false) }
                 var screen         by remember { mutableStateOf(AppScreen.SPLASH) }
                 val scope          = rememberCoroutineScope()
@@ -87,7 +88,14 @@ class MainActivity : ComponentActivity() {
                         uri.scheme == "spendguard" && uri.host == "login-callback" -> {
                             while (screen == AppScreen.SPLASH) delay(100)
                             userRepository.handleGoogleCallback(uri.toString())
-                            if (userRepository.isLoggedIn.value) screen = AppScreen.MAIN
+                            if (userRepository.isLoggedIn.value) {
+                                if (userRepository.isPro()) {
+                                    proManager.activatePro("premium")
+                                } else {
+                                    proManager.deactivatePro()
+                                }
+                                screen = AppScreen.MAIN
+                            }
                         }
                         uri.scheme == "spendguard" && uri.host == "referral" -> {
                             val code = uri.getQueryParameter("code")
@@ -107,6 +115,13 @@ class MainActivity : ComponentActivity() {
                             !onboardingDone -> screen = AppScreen.ONBOARDING
                             else -> {
                                 userRepository.loadUserProfile()
+                                if (userRepository.isLoggedIn.value) {
+                                    if (userRepository.isPro()) {
+                                        proManager.activatePro("premium")
+                                    } else {
+                                        proManager.deactivatePro()
+                                    }
+                                }
                                 screen = if (userRepository.isLoggedIn.value) AppScreen.MAIN else AppScreen.AUTH
                             }
                         }
@@ -139,7 +154,17 @@ class MainActivity : ComponentActivity() {
                         )
                         AppScreen.AUTH       -> AuthScreen(
                             userRepository = userRepository,
-                            onAuthSuccess  = { screen = AppScreen.MAIN }
+                            onAuthSuccess  = {
+                                scope.launch {
+                                    userRepository.loadUserProfile()
+                                    if (userRepository.isPro()) {
+                                        proManager.activatePro("premium")
+                                    } else {
+                                        proManager.deactivatePro()
+                                    }
+                                    screen = AppScreen.MAIN
+                                }
+                            }
                         )
                         AppScreen.MAIN       -> MainScreen(
                             userRepository      = userRepository,
@@ -147,6 +172,7 @@ class MainActivity : ComponentActivity() {
                             pendingWidgetItem    = pendingWidgetItem,
                             pendingWidgetPrice   = pendingWidgetPrice,
                             themeManager        = themeManager,
+                            proManager          = proManager,
                             onSignOut           = { screen = AppScreen.AUTH }
                         )
                     }
@@ -367,6 +393,7 @@ fun MainScreen(
     pendingWidgetItem: MutableStateFlow<String?>,
     pendingWidgetPrice: MutableStateFlow<Double>,
     themeManager: ThemeManager,
+    proManager: ProManager,
     onSignOut: () -> Unit
 ) {
     var currentView          by remember { mutableStateOf(ViewState.DASHBOARD) }
@@ -376,7 +403,6 @@ fun MainScreen(
     val scope               = rememberCoroutineScope()
     val database            = remember { SpendGuardDatabase.getDatabase(context) }
     val geminiService       = remember { GeminiService(BuildConfig.BACKEND_URL) }
-    val proManager          = remember { ProManager(context) }
     val billingManager      = remember { BillingManager(context, proManager) }
     val achievementsManager = remember { AchievementsManager(context) }
     val referralManager     = remember { ReferralManager(context, proManager) }
@@ -386,6 +412,12 @@ fun MainScreen(
     val goalManager            = remember { GoalManager(context) }
     val intentionsManager      = remember { IntentionsManager(context) }
     val weeklyInsightManager   = remember { WeeklyInsightManager(context) }
+    val profileManager         = remember { ProfileManager(context) }
+    val dataSyncManager        = remember { DataSyncManager(context, userRepository, database.purchaseDao(), achievementsManager, streakManager, goalManager, intentionsManager, profileManager) }
+
+    LaunchedEffect(Unit) {
+        dataSyncManager.syncDownload()
+    }
 
     var autoItemName  by remember { mutableStateOf("") }
     var autoItemPrice by remember { mutableStateOf(0.0) }
@@ -487,18 +519,17 @@ fun MainScreen(
                                     val analysis = geminiService.analyzeImpulse(itemToReevaluate!!, price, newJustification, profile)
                                     val existingId = lastPurchase?.id ?: 0
                                     if (existingId > 0) {
-                                        database.purchaseDao().update(
-                                            lastPurchase!!.copy(
-                                                justification  = newJustification,
-                                                wasBlocked     = !analysis.allowed,
-                                                aiMessage      = analysis.message,
-                                                coolingOffTime = analysis.coolingOffTime,
-                                                category       = analysis.category
-                                            )
+                                        val updatedPurchase = lastPurchase!!.copy(
+                                            justification  = newJustification,
+                                            wasBlocked     = !analysis.allowed,
+                                            aiMessage      = analysis.message,
+                                            coolingOffTime = analysis.coolingOffTime,
+                                            category       = analysis.category
                                         )
+                                        database.purchaseDao().update(updatedPurchase)
+                                        userRepository.syncPurchase(updatedPurchase)
                                     } else {
-                                        database.purchaseDao().insert(
-                                            PurchaseEntity(
+                                        val newPurchase = PurchaseEntity(
                                                 userId        = userRepository.getCurrentUserId() ?: "",
                                                 itemName      = itemToReevaluate!!,
                                                 price         = price,
@@ -506,9 +537,10 @@ fun MainScreen(
                                                 wasBlocked    = !analysis.allowed,
                                                 aiMessage     = analysis.message,
                                                 coolingOffTime = analysis.coolingOffTime,
-                                                category      = analysis.category
-                                            )
+                                            category      = analysis.category
                                         )
+                                        database.purchaseDao().insert(newPurchase)
+                                        userRepository.syncPurchase(newPurchase)
                                     }
                                     pendingReevaluation.value = null
                                     showJustificationField    = false

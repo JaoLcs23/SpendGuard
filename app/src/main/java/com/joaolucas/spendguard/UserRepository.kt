@@ -241,7 +241,8 @@ class UserRepository {
                     wasBlocked     = purchase.wasBlocked,
                     aiMessage      = purchase.aiMessage,
                     coolingOffTime = purchase.coolingOffTime,
-                    timestamp      = purchase.timestamp
+                    timestamp      = purchase.timestamp,
+                    category       = purchase.category
                 )
             )
         } catch (_: Exception) { }

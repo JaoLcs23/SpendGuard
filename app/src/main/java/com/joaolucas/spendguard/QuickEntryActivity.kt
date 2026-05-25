@@ -167,6 +167,7 @@ class QuickEntryActivity : Activity() {
 
                 withContext(Dispatchers.IO) {
                     database.purchaseDao().insert(purchase)
+                    UserRepository().syncPurchase(purchase)
                 }
 
                 SpendGuardWidget.requestUpdate(applicationContext)

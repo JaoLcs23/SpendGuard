@@ -361,6 +361,7 @@ fun SimulatorScreen(
                             category       = offlineResult.category
                         )
                         database.purchaseDao().insert(purchase)
+                        userRepository.syncPurchase(purchase)
                         if (!offlineResult.allowed) streakManager.onImpulseBlocked()
                         isLoading = false
                         return@launch
@@ -381,6 +382,7 @@ fun SimulatorScreen(
                             category      = analysis.category
                         )
                         database.purchaseDao().insert(purchase)
+                        userRepository.syncPurchase(purchase)
 
                         AdaptiveModelTrainer.learn(
                             context       = context,
@@ -423,6 +425,7 @@ fun SimulatorScreen(
                                 category       = offlineResult.category
                             )
                             database.purchaseDao().insert(purchase)
+                            userRepository.syncPurchase(purchase)
                             if (!offlineResult.allowed && offlineResult.coolingOffTime > 0) {
                                 streakManager.onImpulseBlocked()
                             }

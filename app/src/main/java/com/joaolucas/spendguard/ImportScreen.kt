@@ -264,6 +264,7 @@ fun ImportScreen(
                                 }
                                 withContext(Dispatchers.IO) {
                                     database.purchaseDao().insertAll(entities)
+                                    entities.forEach { userRepository.syncPurchase(it) }
                                 }
                                 importedCount = entities.size
                                 importDone    = true
