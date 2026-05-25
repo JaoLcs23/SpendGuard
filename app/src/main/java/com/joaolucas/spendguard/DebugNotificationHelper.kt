@@ -52,7 +52,7 @@ class DebugNotificationHelper(private val context: android.content.Context) {
 
         val isPixSent = pixSentKeywords.any { fullText.contains(it) }
 
-        val geminiService = GeminiService(BuildConfig.GEMINI_API_KEY)
+        val geminiService = GeminiService(BuildConfig.BACKEND_URL)
 
         if (isPixSent) {
             val pixInfo = geminiService.extractPixInfo(rawText)

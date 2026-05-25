@@ -226,7 +226,7 @@ class ShoppingNotificationListener : NotificationListenerService() {
     }
 
     private fun handleShoppingNotification(rawText: String, storeName: String) {
-        val geminiService = GeminiService(BuildConfig.GEMINI_API_KEY)
+        val geminiService = GeminiService(BuildConfig.BACKEND_URL)
         serviceScope.launch {
             try {
                 val purchaseInfo = geminiService.extractPurchaseInfo(rawText)
@@ -249,7 +249,7 @@ class ShoppingNotificationListener : NotificationListenerService() {
     }
 
     private fun handlePixNotification(rawText: String, bankName: String) {
-        val geminiService = GeminiService(BuildConfig.GEMINI_API_KEY)
+        val geminiService = GeminiService(BuildConfig.BACKEND_URL)
         serviceScope.launch {
             try {
                 val pixInfo = geminiService.extractPixInfo(rawText)
