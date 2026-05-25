@@ -190,10 +190,10 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Divider(modifier = Modifier.weight(1f), color = Color.White.copy(alpha = 0.15f))
+                HorizontalDivider(modifier = Modifier.weight(1f), color = Color.White.copy(alpha = 0.15f))
                 Text("  ou  ", color = Color.White.copy(alpha = 0.4f),
                     style = MaterialTheme.typography.bodySmall)
-                Divider(modifier = Modifier.weight(1f), color = Color.White.copy(alpha = 0.15f))
+                HorizontalDivider(modifier = Modifier.weight(1f), color = Color.White.copy(alpha = 0.15f))
             }
 
             Spacer(modifier = Modifier.height(16.dp))

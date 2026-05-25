@@ -66,8 +66,6 @@ fun SimulatorScreen(
     val currentUserId = remember { userRepository.getCurrentUserId() ?: "" }
     val focusManager = LocalFocusManager.current
 
-    // rememberSaveable preserves input fields across screen navigation
-    // but is reset when the app is fully closed (Activity recreated from scratch)
     val itemNameState      = rememberSaveable { mutableStateOf(autoItemName) }
     val itemPriceState     = rememberSaveable { mutableStateOf(if (autoItemPrice > 0) autoItemPrice.toString() else "") }
     val justificationState = rememberSaveable { mutableStateOf("") }
@@ -567,7 +565,7 @@ fun SimulatorScreen(
                             )
 
                             if (isBlocked && analysis.coolingOffTime > 0) {
-                                Divider(color = accentColor.copy(alpha = 0.2f))
+                                HorizontalDivider(color = accentColor.copy(alpha = 0.2f))
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(
                                         Icons.Outlined.Timer,

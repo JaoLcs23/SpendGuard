@@ -214,7 +214,7 @@ private fun ActiveCard(gold: Color, state: ChallengeManager.ChallengeState.Activ
                     label = "dias completos",
                     gold  = gold
                 )
-                Divider(
+                HorizontalDivider(
                     modifier = Modifier
                         .height(48.dp)
                         .width(1.dp),
@@ -225,7 +225,7 @@ private fun ActiveCard(gold: Color, state: ChallengeManager.ChallengeState.Activ
                     label = "dias restantes",
                     gold  = gold
                 )
-                Divider(
+                HorizontalDivider(
                     modifier = Modifier
                         .height(48.dp)
                         .width(1.dp),

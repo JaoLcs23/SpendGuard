@@ -504,7 +504,7 @@ fun ProComparisonPageContent(scrollState: ScrollState) {
                     }
                 }
 
-                Divider(color = gold.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 14.dp))
+                HorizontalDivider(color = gold.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 14.dp))
 
                 rows.forEachIndexed { idx, row ->
                     val isProOnly = row.free == "—"
@@ -532,7 +532,7 @@ fun ProComparisonPageContent(scrollState: ScrollState) {
                         FeatureCell(row.pro,  Modifier.weight(1.5f), gold, green, true)
                     }
                     if (idx < rows.size - 1)
-                        Divider(color = Color.White.copy(alpha = 0.04f), modifier = Modifier.padding(horizontal = 14.dp))
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.04f), modifier = Modifier.padding(horizontal = 14.dp))
                 }
             }
         }

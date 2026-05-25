@@ -258,7 +258,7 @@ private fun ExploreTab(
             }
         }
 
-        Divider(
+        HorizontalDivider(
             color    = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f),
             modifier = Modifier.padding(horizontal = 16.dp)
         )
@@ -460,7 +460,7 @@ private fun MyLibraryTab(
             }
         }
 
-        Divider(
+        HorizontalDivider(
             color    = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f),
             modifier = Modifier.padding(horizontal = 16.dp)
         )
@@ -628,7 +628,7 @@ fun CatalogResourceCard(
                     exit    = shrinkVertically()
                 ) {
                     Column {
-                        Divider(
+                        HorizontalDivider(
                             modifier = Modifier.padding(vertical = 4.dp),
                             color    = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)
                         )
@@ -846,7 +846,7 @@ fun LibraryResourceCard(
                     exit    = shrinkVertically()
                 ) {
                     Column {
-                        Divider(
+                        HorizontalDivider(
                             modifier = Modifier.padding(vertical = 4.dp),
                             color    = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)
                         )

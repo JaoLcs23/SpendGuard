@@ -86,7 +86,7 @@ fun HistoryScreen(
     var savingRecommendation   by remember { mutableStateOf(false) }
     var saveMessage            by remember { mutableStateOf<Pair<String, Boolean>?>(null) }
 
-    val prefs      = remember { context.getSharedPreferences("spendguard_prefs", Context.MODE_PRIVATE) }
+    val prefs      = remember { SecurePrefs.create(context, "spendguard_prefs_secure") }
 
     val periodFiltered = remember(purchases, selectedPeriod, customStart, customEnd) {
         val now = System.currentTimeMillis()
@@ -966,7 +966,7 @@ fun PurchaseHistoryCard(
             }
 
             if (isExpanded) {
-                Divider(
+                HorizontalDivider(
                     modifier  = Modifier.padding(vertical = 4.dp),
                     color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
                 )
@@ -1158,7 +1158,7 @@ private fun ResourceDetailSheet(
         )
 
         if (resource.description.isNotEmpty()) {
-            Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f))
             Text(
                 resource.description,
                 style      = MaterialTheme.typography.bodyMedium,

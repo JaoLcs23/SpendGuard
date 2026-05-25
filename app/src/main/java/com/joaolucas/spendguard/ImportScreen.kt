@@ -500,7 +500,7 @@ private fun PreviewSection(
                         }
                     }
                     if (pendingTransactions.last() != t)
-                        Divider(color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.08f))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.08f))
                 }
             }
         }

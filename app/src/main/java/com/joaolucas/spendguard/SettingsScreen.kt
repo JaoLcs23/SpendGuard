@@ -534,7 +534,7 @@ fun SettingsScreen(
                 subtitle = "Tudo fica no seu celular — 100% privado",
                 onClick = { showDataDialog = true }
             )
-            Divider(modifier = Modifier.padding(horizontal = 16.dp))
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             SettingsItem(
                 icon       = Icons.Outlined.Delete,
                 title      = "Limpar histórico de compras",
@@ -552,14 +552,14 @@ fun SettingsScreen(
                 title   = "Versão",
                 subtitle = "SpendGuard 1.0.0"
             )
-            Divider(modifier = Modifier.padding(horizontal = 16.dp))
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             SettingsItem(
                 icon    = Icons.Outlined.Refresh,
                 title   = "Ver introdução novamente",
                 subtitle = "Relembre como o Guardião funciona",
                 onClick = onOpenOnboarding
             )
-            Divider(modifier = Modifier.padding(horizontal = 16.dp))
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             SettingsItem(
                 icon    = Icons.Outlined.Lock,
                 title   = "Política de Privacidade",

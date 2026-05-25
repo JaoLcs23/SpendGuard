@@ -8,8 +8,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
-import androidx.compose.material.icons.automirrored.outlined.MenuBook
-import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
+import androidx.compose.material.icons.outlined.MenuBook
+import androidx.compose.material.icons.outlined.ReceiptLong
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -161,7 +161,7 @@ fun DashboardScreen(
                 )
 
                 Spacer(Modifier.height(20.dp))
-                Divider(color = gold.copy(alpha = 0.12f))
+                HorizontalDivider(color = gold.copy(alpha = 0.12f))
                 Spacer(Modifier.height(16.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -346,7 +346,7 @@ fun DashboardScreen(
                     modifier  = Modifier.weight(1f),
                     title     = "Biblioteca",
                     subtitle  = "Explorar conteúdos",
-                    icon      = Icons.AutoMirrored.Outlined.MenuBook,
+                    icon      = Icons.Outlined.MenuBook,
                     color     = Color(0xFF7F77DD),
                     onClick   = { onNavigate(ViewState.LIBRARY) }
                 )
@@ -359,7 +359,7 @@ fun DashboardScreen(
                     modifier  = Modifier.weight(1f),
                     title     = "Histórico",
                     subtitle  = "Ver análises",
-                    icon      = Icons.AutoMirrored.Outlined.ReceiptLong,
+                    icon      = Icons.Outlined.ReceiptLong,
                     color     = Color(0xFF81C784),
                     onClick   = { onNavigate(ViewState.HISTORY) }
                 )

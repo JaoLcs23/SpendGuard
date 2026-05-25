@@ -74,7 +74,7 @@ class MainActivity : ComponentActivity() {
                 AppTheme.SYSTEM -> null
             }
             SpendGuardTheme(forceDark = forceDark) {
-                val prefs          = remember { context.getSharedPreferences("spendguard_prefs", Context.MODE_PRIVATE) }
+                val prefs          = remember { SecurePrefs.create(context, "spendguard_prefs_secure") }
                 val userRepository = remember { UserRepository() }
                 val onboardingDone = remember { prefs.getBoolean("onboarding_completed", false) }
                 var screen         by remember { mutableStateOf(AppScreen.SPLASH) }
@@ -375,7 +375,7 @@ fun MainScreen(
     val context             = LocalContext.current
     val scope               = rememberCoroutineScope()
     val database            = remember { SpendGuardDatabase.getDatabase(context) }
-    val geminiService       = remember { GeminiService(BuildConfig.GEMINI_API_KEY) }
+    val geminiService       = remember { GeminiService(BuildConfig.BACKEND_URL) }
     val proManager          = remember { ProManager(context) }
     val billingManager      = remember { BillingManager(context, proManager) }
     val achievementsManager = remember { AchievementsManager(context) }
@@ -666,7 +666,7 @@ fun MainScreen(
                 ViewState.IMPORT -> ImportScreen(
                     database       = database,
                     userRepository = userRepository,
-                    isPro          = proManager.isPro.value,
+                    isPro          = proManager.isPro.collectAsState().value,
                     onBack         = { currentView = ViewState.HISTORY },
                     onShowPaywall  = { currentView = ViewState.PAYWALL }
                 )

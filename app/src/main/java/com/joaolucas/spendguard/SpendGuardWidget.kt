@@ -107,7 +107,7 @@ class SpendGuardWidget : AppWidgetProvider() {
 
     companion object {
         fun saveUserId(context: Context, userId: String) {
-            context.getSharedPreferences("spendguard_prefs", Context.MODE_PRIVATE)
+            SecurePrefs.create(context, "spendguard_prefs_secure")
                 .edit()
                 .putString("last_user_id", userId)
                 .apply()
