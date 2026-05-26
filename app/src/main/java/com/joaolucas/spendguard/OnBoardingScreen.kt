@@ -47,19 +47,7 @@ fun OnboardingScreen(isReplay: Boolean = false, onFinish: () -> Unit) {
     val context        = LocalContext.current
     val gold           = MaterialTheme.colorScheme.primary
     val black          = Color(0xFF121212)
-    val profileManager = remember { ProfileManager(context) }
-
-    var showProfileStep      by remember { mutableStateOf(false) }
     var showPermissionDialog by remember { mutableStateOf(false) }
-
-    if (showProfileStep) {
-        ProfileScreen(
-            profileManager = profileManager,
-            isOnboarding   = true,
-            onDone         = { showPermissionDialog = true; showProfileStep = false }
-        )
-        return
-    }
 
     val pages = listOf(
         OnboardingPage(
@@ -80,7 +68,7 @@ fun OnboardingScreen(isReplay: Boolean = false, onFinish: () -> Unit) {
             description = "Descreva o que quer comprar. O Guardião analisa sua justificativa com IA e separa necessidade real de impulso — antes que o dinheiro saia da sua conta.",
             highlights  = listOf(
                 Icons.Outlined.Mood             to "Check-in emocional antes de cada análise",
-                Icons.Outlined.AutoAwesome      to "IA considera emoção e horas de trabalho no veredicto",
+                Icons.Outlined.AutoAwesome      to "IA considera sua emoção no veredicto",
                 Icons.Outlined.Timer            to "Reflexão de 24h a 1 semana conforme o valor",
                 Icons.Outlined.Lightbulb        to "Sua intenção financeira aparece antes de cada análise"
             )
@@ -89,13 +77,13 @@ fun OnboardingScreen(isReplay: Boolean = false, onFinish: () -> Unit) {
         OnboardingPage(
             icon        = Icons.Outlined.MenuBook,
             title       = "Biblioteca Financeira",
-            description = "Conteúdos selecionados com critério — livros, vídeos, artigos e cursos com valor comprovado ao longo do tempo. Aprenda no momento certo, não antes.",
+            description = "Conteúdos selecionados com critério — livros, vídeos, artigos e cursos com valor comprovado ao longo do tempo. Aprenda no momento certo.",
             accentColor = Color(0xFF7F77DD),
             highlights  = listOf(
                 Icons.Outlined.Explore          to "Catálogo completo com busca e filtros por tipo",
                 Icons.Outlined.BookmarkAdd      to "Salve conteúdos na sua biblioteca pessoal",
                 Icons.Outlined.Lightbulb        to "Sugestões no histórico quando você mais precisa",
-                Icons.Outlined.Lock             to "Acesso completo e ilimitado — gratuito para sempre"
+                Icons.Outlined.Lock             to "Acesso completo e ilimitado"
             )
         ),
 
@@ -113,7 +101,7 @@ fun OnboardingScreen(isReplay: Boolean = false, onFinish: () -> Unit) {
 
         OnboardingPage(
             icon        = Icons.Outlined.Widgets,
-            title       = "Registro sem Atrito",
+            title       = "Registro Sem Atrito",
             description = "O widget na tela inicial deixa você registrar um gasto em um toque — escolha a categoria e o Guardião abre pronto para analisar. Quanto menos fricção, mais você registra.",
             accentColor = Color(0xFF4FC3F7),
             highlights  = listOf(
@@ -157,11 +145,11 @@ fun OnboardingScreen(isReplay: Boolean = false, onFinish: () -> Unit) {
         OnboardingPage(
             icon        = Icons.Outlined.Lock,
             title       = "Seus Dados, Sua Privacidade",
-            description = "O SpendGuard foi desenvolvido em conformidade com a LGPD. Sem rastreamento, sem venda de dados, sem surpresas.",
+            description = "O SpendGuard foi desenvolvido em conformidade com a LGPD. Respeito total pela sua segurança e privacidade.",
             highlights  = listOf(
-                Icons.Outlined.PhonelinkLock        to "Histórico salvo apenas no seu celular",
+                Icons.Outlined.CloudSync            to "Histórico salvo de forma segura na nuvem",
                 Icons.Outlined.VisibilityOff        to "A IA analisa apenas o texto da compra",
-                Icons.Outlined.PersonOff            to "Nenhum dado pessoal coletado",
+                Icons.Outlined.Analytics            to "Apenas dados essenciais coletados para calibrar as análises",
                 Icons.Outlined.SettingsBackupRestore to "Revogue permissões a qualquer momento"
             )
         )
@@ -278,7 +266,7 @@ fun OnboardingScreen(isReplay: Boolean = false, onFinish: () -> Unit) {
                         modifier            = Modifier.padding(horizontal = 32.dp)
                     ) {
                         Button(
-                            onClick = { if (isReplay) onFinish() else showProfileStep = true },
+                            onClick = { if (isReplay) onFinish() else showPermissionDialog = true },
                             modifier = Modifier.fillMaxWidth().height(56.dp),
                             shape    = RoundedCornerShape(16.dp),
                             colors   = ButtonDefaults.buttonColors(containerColor = gold, contentColor = black)
