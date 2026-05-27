@@ -136,6 +136,19 @@ fun OnboardingScreen(isReplay: Boolean = false, onFinish: () -> Unit) {
             )
         ),
         OnboardingPage(
+            icon        = Icons.Outlined.Timeline,
+            title       = "IA Preditiva de Padrões",
+            description = "O Guardião analisa seus hábitos de compra e antecipa momentos de risco, enviando alertas preventivos antes que o impulso aconteça. Uma funcionalidade exclusiva do plano Pro.",
+            accentColor = Color(0xFFF06292),
+            highlights  = listOf(
+                Icons.Outlined.Insights             to "Descubra seus dias e horários de maior vulnerabilidade",
+                Icons.Outlined.NotificationsActive  to "Receba alertas proativos no celular",
+                Icons.Outlined.TrendingDown         to "Acompanhe a velocidade e tendência dos seus gastos",
+                Icons.Outlined.Psychology           to "IA aprende seus gatilhos comportamentais"
+            )
+        ),
+
+        OnboardingPage(
             icon            = Icons.Outlined.WorkspacePremium,
             title           = "Grátis vs Pro",
             description     = "Comece grátis. Evolua quando quiser.",
@@ -419,6 +432,7 @@ fun ProComparisonPageContent(scrollState: ScrollState) {
         FeatureRow(Icons.Outlined.NotificationsActive, "Detecção automática de compras","—",         "Sim"),
         FeatureRow(Icons.Outlined.Shield,              "Modo estrito",                  "—",         "Sim"),
         FeatureRow(Icons.Outlined.WifiOff,             "Análise offline",               "—",         "Sim"),
+        FeatureRow(Icons.Outlined.Timeline,            "IA Preditiva de Padrões",       "—",         "Sim"),
         FeatureRow(Icons.Outlined.AutoAwesome,         "Insight semanal por IA",        "—",         "Sim"),
         FeatureRow(Icons.Outlined.CardGiftcard,        "Programa de indicação",         "—",         "7 dias grátis")
     )

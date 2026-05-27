@@ -124,4 +124,30 @@ class GeminiService(private val baseUrl: String) {
             null
         }
     }
+
+    suspend fun predictInsight(
+        patterns: PredictivePatterns,
+        userProfile: FinancialProfile = FinancialProfile()
+    ): PredictiveInsight {
+        val requestBody = buildJsonObject {
+            put("topSpendingDay", patterns.topSpendingDay)
+            put("topSpendingHour", patterns.topSpendingHour)
+            put("weeklySpendingCurrent", patterns.weeklySpendingCurrent)
+            put("weeklySpendingPrevious", patterns.weeklySpendingPrevious)
+            put("spendingTrend", patterns.spendingTrend)
+            put("impulseRate", patterns.impulseRate)
+            put("impulseRateTrend", patterns.impulseRateTrend)
+            put("riskCategory", patterns.riskCategory)
+            put("riskCategoryBlockRate", patterns.riskCategoryBlockRate)
+            put("totalAnalyzed", patterns.totalAnalyzed)
+            put("totalBlocked", patterns.totalBlocked)
+            put("monthTotal", patterns.monthTotal)
+            put("profileContext", userProfile.toPromptContext())
+        }
+
+        return client.post("$baseUrl/api/gemini/predict") {
+            contentType(ContentType.Application.Json)
+            setBody(requestBody)
+        }.body()
+    }
 }

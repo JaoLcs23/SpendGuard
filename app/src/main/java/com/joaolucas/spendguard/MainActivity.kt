@@ -419,6 +419,8 @@ fun MainScreen(
 
     LaunchedEffect(Unit) {
         dataSyncManager.syncDownload()
+        WeeklyReviewWorker.scheduleWeekly(context)
+        PredictiveInsightWorker.schedule(context)
         isSyncCompleted = true
     }
 

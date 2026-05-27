@@ -46,6 +46,7 @@ fun DashboardScreen(
     val streak        by streakManager.streak.collectAsState()
     val monthlyGoal   by goalManager.monthlyGoal.collectAsState()
     val weeklyInsight by weeklyInsightManager.insight.collectAsState()
+    val isPro         by proManager.isPro.collectAsState()
     val currentHour   = remember { Calendar.getInstance().get(Calendar.HOUR_OF_DAY) }
     val isNightRisk   = currentHour in 22..23 || currentHour in 0..2
 
@@ -322,6 +323,35 @@ fun DashboardScreen(
                                 color = gold.copy(alpha = 0.8f),
                                 fontWeight = FontWeight.Bold)
                         }
+                    }
+                }
+            }
+        }
+
+        val predictiveManager = remember { PredictiveInsightManager(context) }
+        val predictiveInsight = remember { predictiveManager.load() }
+
+        predictiveInsight?.let { insight ->
+            if (insight.title.isNotEmpty() && isPro) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Outlined.Lightbulb, null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("PREVISÃO DO GUARDIÃO",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.tertiary, letterSpacing = 1.sp)
+                        }
+                        Text(insight.title,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onTertiaryContainer)
+                        Text(insight.message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.9f), lineHeight = 18.sp)
                     }
                 }
             }
