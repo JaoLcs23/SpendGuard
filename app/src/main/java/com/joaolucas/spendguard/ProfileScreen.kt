@@ -42,6 +42,7 @@ fun ProfileScreen(
     }
     var selectedGoal by remember { mutableStateOf(current.financialGoal) }
     var selectedCategories by remember { mutableStateOf(current.spendingCategories.toMutableSet()) }
+    var saved by remember { mutableStateOf(false) }
 
     fun save() {
         profileManager.save(
@@ -52,54 +53,72 @@ fun ProfileScreen(
                 isComplete          = selectedGoal.isNotEmpty()
             )
         )
-        onDone()
+        if (isOnboarding) {
+            onDone()
+        } else {
+            saved = true
+        }
     }
 
-    val content: @Composable (PaddingValues) -> Unit = { padding ->
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(padding)
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            if (isOnboarding) {
+            // Header — same style as IntentionsScreen
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onDone) {
+                    Icon(Icons.Outlined.ArrowBack, null, tint = gold)
+                }
+                Text(
+                    "Perfil Financeiro",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = gold
+                )
+            }
+
+            // Explanatory card — same style as IntentionsScreen
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+            ) {
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Surface(
-                        shape = RoundedCornerShape(24.dp),
-                        color = gold.copy(alpha = 0.15f),
-                        modifier = Modifier.size(80.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Outlined.Person, null, tint = gold, modifier = Modifier.size(40.dp))
-                        }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Outlined.Person, null, tint = gold, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Para que serve meu perfil?",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = gold
+                        )
                     }
                     Text(
-                        "Seu perfil financeiro",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = gold
-                    )
-                    Text(
-                        "Isso personaliza as análises do Guardião para a sua realidade.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        "Seus dados personalizam as análises do Guardião para a sua realidade financeira. Nada é compartilhado externamente.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 18.sp
                     )
                 }
             }
 
+            // Sections
             ProfileSection(title = "Renda mensal", icon = Icons.Outlined.AccountBalance) {
                 incomeRanges.forEachIndexed { idx, (label, _) ->
                     ProfileOptionRow(
                         label    = label,
                         selected = selectedIncomeIdx == idx,
-                        onClick  = { selectedIncomeIdx = idx }
+                        onClick  = { selectedIncomeIdx = idx; saved = false }
                     )
                 }
             }
@@ -109,7 +128,7 @@ fun ProfileScreen(
                     ProfileOptionRow(
                         label    = goal.label,
                         selected = selectedGoal == goal.name,
-                        onClick  = { selectedGoal = goal.name }
+                        onClick  = { selectedGoal = goal.name; saved = false }
                     )
                 }
             }
@@ -128,71 +147,55 @@ fun ProfileScreen(
                             selectedCategories = selectedCategories.toMutableSet().apply {
                                 if (checked) remove(cat.name) else add(cat.name)
                             }
+                            saved = false
                         }
                     )
                 }
             }
 
-            Spacer(Modifier.height(4.dp))
-            Button(
-                onClick  = { save() },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                shape  = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = gold, contentColor = black)
+            // Action buttons — same style as IntentionsScreen
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Icon(
-                    if (isOnboarding) Icons.Outlined.ArrowForward else Icons.Outlined.Check,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    if (isOnboarding) "Continuar" else "Salvar perfil",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
-            }
+                if (isOnboarding) {
+                    OutlinedButton(
+                        onClick  = { onDone() },
+                        modifier = Modifier.weight(1f),
+                        shape    = RoundedCornerShape(16.dp)
+                    ) {
+                        Icon(Icons.Outlined.SkipNext, null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Pular")
+                    }
+                }
 
-            if (isOnboarding) {
-                TextButton(
-                    onClick  = { onDone() },
-                    modifier = Modifier.fillMaxWidth()
+                Button(
+                    onClick  = { save() },
+                    enabled  = selectedGoal.isNotEmpty() && !saved,
+                    modifier = Modifier.weight(1f),
+                    shape    = RoundedCornerShape(16.dp)
                 ) {
+                    Icon(
+                        if (saved) Icons.Outlined.Check
+                        else if (isOnboarding) Icons.Outlined.ArrowForward
+                        else Icons.Outlined.Save,
+                        null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(Modifier.width(6.dp))
                     Text(
-                        "Pular por agora",
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                        fontSize = 13.sp
+                        when {
+                            saved -> "Salvo!"
+                            isOnboarding -> "Continuar"
+                            else -> "Salvar perfil"
+                        }
                     )
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(32.dp))
         }
-    }
-
-    if (isOnboarding) {
-        content(PaddingValues(0.dp))
-    } else {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("Perfil financeiro") },
-                    navigationIcon = {
-                        IconButton(onClick = onDone) {
-                            Icon(Icons.Outlined.ArrowBack, "Voltar")
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                )
-            },
-            content = content
-        )
     }
 }
 
