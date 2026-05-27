@@ -77,6 +77,9 @@ interface PurchaseDao {
         LIMIT 1
     """)
     suspend fun findSimilarRecentPurchase(name: String, since: Long): PurchaseEntity?
+
+    @Query("SELECT * FROM purchase_history WHERE userId = :userId AND timestamp > :since ORDER BY timestamp DESC")
+    suspend fun getPurchasesSince(userId: String, since: Long): List<PurchaseEntity>
 }
 
 val MIGRATION_3_4 = object : Migration(3, 4) {

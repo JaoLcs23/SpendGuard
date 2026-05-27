@@ -180,7 +180,10 @@ fun SettingsScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        scope.launch { database.purchaseDao().deleteAll() }
+                        scope.launch { 
+                            database.purchaseDao().deleteAll() 
+                            userRepository.clearAllPurchases()
+                        }
                         showClearHistoryDialog = false
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
@@ -654,7 +657,7 @@ fun SettingsScreen(
         Spacer(Modifier.height(8.dp))
 
         if (BuildConfig.DEBUG) {
-            DebugProPanel(proManager = proManager, isPro = isPro, plan = plan, gold = gold)
+            DebugProPanel(userRepository = userRepository, proManager = proManager, isPro = isPro, plan = plan, gold = gold)
             DebugNotificationPanel(context = context)
         }
     }
@@ -725,6 +728,7 @@ fun SettingsScreen(
 
 @Composable
 private fun DebugProPanel(
+    userRepository: UserRepository,
     proManager: ProManager,
     isPro: Boolean,
     plan: String,
@@ -763,8 +767,14 @@ private fun DebugProPanel(
                 color = if (isPro) gold else Color.White.copy(alpha = 0.5f)
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val scope = rememberCoroutineScope()
                 OutlinedButton(
-                    onClick = { proManager.activatePro("monthly") },
+                    onClick = { 
+                        scope.launch {
+                            userRepository.activatePro("monthly")
+                            proManager.activatePro("monthly") 
+                        }
+                    },
                     enabled = !isPro || plan != "monthly",
                     shape = RoundedCornerShape(8.dp),
                     border = androidx.compose.foundation.BorderStroke(1.dp, gold.copy(alpha = 0.4f)),
@@ -774,7 +784,12 @@ private fun DebugProPanel(
                     Text("Ativar mensal", style = MaterialTheme.typography.labelSmall, color = gold)
                 }
                 OutlinedButton(
-                    onClick = { proManager.activateTrialPro(days = 7) },
+                    onClick = { 
+                        scope.launch {
+                            userRepository.activatePro("trial")
+                            proManager.activateTrialPro(days = 7) 
+                        }
+                    },
                     enabled = !isPro || plan != "trial",
                     shape = RoundedCornerShape(8.dp),
                     border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF7F77DD).copy(alpha = 0.4f)),
@@ -785,8 +800,14 @@ private fun DebugProPanel(
                 }
             }
             if (isPro) {
+                val scope = rememberCoroutineScope()
                 OutlinedButton(
-                    onClick = { proManager.deactivatePro() },
+                    onClick = { 
+                        scope.launch {
+                            userRepository.deactivatePro()
+                            proManager.deactivatePro() 
+                        }
+                    },
                     shape = RoundedCornerShape(8.dp),
                     border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.4f)),
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),

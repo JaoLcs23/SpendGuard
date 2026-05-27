@@ -155,6 +155,20 @@ class UserRepository {
         }
     }
 
+    suspend fun deactivatePro(): Result<Unit> {
+        return try {
+            val userId = getCurrentUserId()
+                ?: return Result.failure(Exception("Não autenticado"))
+            client.postgrest["users"].update(
+                mapOf("is_pro" to false, "plan_type" to "none")
+            ) { filter { eq("id", userId) } }
+            loadUserProfile()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun isPro(): Boolean = _currentUser.value?.isPro ?: false
 
     private fun currentWeekKey(): String {
@@ -254,6 +268,18 @@ class UserRepository {
             Log.d("UserRepository", "syncPurchase: SUCCESS for '${purchase.itemName}'")
         } catch (e: Exception) {
             Log.e("UserRepository", "syncPurchase: FAILED for '${purchase.itemName}'", e)
+        }
+    }
+
+    suspend fun clearAllPurchases() {
+        val userId = getCurrentUserId() ?: return
+        try {
+            client.postgrest["purchases"].delete {
+                filter { eq("user_id", userId) }
+            }
+            Log.d("UserRepository", "clearAllPurchases: SUCCESS")
+        } catch (e: Exception) {
+            Log.e("UserRepository", "clearAllPurchases: FAILED", e)
         }
     }
 }

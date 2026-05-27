@@ -149,7 +149,10 @@ fun HistoryScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        scope.launch { database.purchaseDao().deleteByUser(currentUserId) }
+                        scope.launch { 
+                            database.purchaseDao().deleteByUser(currentUserId)
+                            userRepository.clearAllPurchases() 
+                        }
                         showClearDialog = false
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
