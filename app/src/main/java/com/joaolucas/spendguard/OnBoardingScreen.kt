@@ -48,6 +48,7 @@ fun OnboardingScreen(isReplay: Boolean = false, onFinish: () -> Unit) {
     val gold           = MaterialTheme.colorScheme.primary
     val black          = Color(0xFF121212)
     var showPermissionDialog by remember { mutableStateOf(false) }
+    var showWidgetDialog by remember { mutableStateOf(false) }
 
     val pages = listOf(
         OnboardingPage(
@@ -198,14 +199,51 @@ fun OnboardingScreen(isReplay: Boolean = false, onFinish: () -> Unit) {
                     onClick = {
                         showPermissionDialog = false
                         context.startActivity(Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"))
-                        onFinish()
+                        showWidgetDialog = true
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = gold, contentColor = black)
                 ) { Text("Autorizar", fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
-                TextButton(onClick = { showPermissionDialog = false; onFinish() }) {
+                TextButton(onClick = { showPermissionDialog = false; showWidgetDialog = true }) {
                     Text("Pular por agora")
+                }
+            }
+        )
+    }
+
+    if (showWidgetDialog) {
+        AlertDialog(
+            onDismissRequest = { showWidgetDialog = false },
+            icon  = { Icon(Icons.Outlined.Widgets, null, tint = gold) },
+            title = { Text("Mantenha o Guardião por perto", fontWeight = FontWeight.Bold) },
+            text  = {
+                Text(
+                    "O Widget do SpendGuard na sua tela inicial é essencial para que você registre seus gastos antes de desistir.\n\n" +
+                    "Apenas um toque na categoria já abre o aplicativo direto na tela de registro rápido.",
+                    style      = MaterialTheme.typography.bodyMedium,
+                    lineHeight = 22.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showWidgetDialog = false
+                        val appWidgetManager = android.appwidget.AppWidgetManager.getInstance(context)
+                        val myProvider = android.content.ComponentName(context, SpendGuardWidget::class.java)
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                            if (appWidgetManager.isRequestPinAppWidgetSupported) {
+                                appWidgetManager.requestPinAppWidget(myProvider, null, null)
+                            }
+                        }
+                        onFinish()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = gold, contentColor = black)
+                ) { Text("Adicionar Widget", fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showWidgetDialog = false; onFinish() }) {
+                    Text("Agora não")
                 }
             }
         )
