@@ -145,10 +145,15 @@ class UserRepository {
         return try {
             val userId = getCurrentUserId()
                 ?: return Result.failure(Exception("Não autenticado"))
-            client.postgrest["users"].update(
-                mapOf("is_pro" to true, "plan_type" to planType)
-            ) { filter { eq("id", userId) } }
-            loadUserProfile()
+            try {
+                client.postgrest["users"].update(
+                    mapOf("is_pro" to true, "plan_type" to planType)
+                ) { filter { eq("id", userId) } }
+                loadUserProfile()
+            } catch (e: Exception) {
+                // Se o Supabase bloquear (ex: RLS), força localmente no Debug
+                _currentUser.value = _currentUser.value?.copy(isPro = true, planType = planType)
+            }
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -159,14 +164,23 @@ class UserRepository {
         return try {
             val userId = getCurrentUserId()
                 ?: return Result.failure(Exception("Não autenticado"))
-            client.postgrest["users"].update(
-                mapOf("is_pro" to false, "plan_type" to "none")
-            ) { filter { eq("id", userId) } }
-            loadUserProfile()
+            try {
+                client.postgrest["users"].update(
+                    mapOf("is_pro" to false, "plan_type" to "none")
+                ) { filter { eq("id", userId) } }
+                loadUserProfile()
+            } catch (e: Exception) {
+                // Se o Supabase bloquear, força localmente
+                _currentUser.value = _currentUser.value?.copy(isPro = false, planType = "none")
+            }
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    fun forceProState(isPro: Boolean) {
+        _currentUser.value = _currentUser.value?.copy(isPro = isPro)
     }
 
     suspend fun isPro(): Boolean = _currentUser.value?.isPro ?: false

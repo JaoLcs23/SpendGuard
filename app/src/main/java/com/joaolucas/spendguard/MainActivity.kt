@@ -89,7 +89,9 @@ class MainActivity : ComponentActivity() {
                             while (screen == AppScreen.SPLASH) delay(100)
                             userRepository.handleGoogleCallback(uri.toString())
                             if (userRepository.isLoggedIn.value) {
-                                if (userRepository.isPro()) {
+                                if (BuildConfig.DEBUG && proManager.isPro.value) {
+                                    userRepository.forceProState(true)
+                                } else if (userRepository.isPro()) {
                                     proManager.activatePro("premium")
                                 } else {
                                     proManager.deactivatePro()
@@ -116,7 +118,9 @@ class MainActivity : ComponentActivity() {
                             else -> {
                                 userRepository.loadUserProfile()
                                 if (userRepository.isLoggedIn.value) {
-                                    if (userRepository.isPro()) {
+                                    if (BuildConfig.DEBUG && proManager.isPro.value) {
+                                        userRepository.forceProState(true)
+                                    } else if (userRepository.isPro()) {
                                         proManager.activatePro("premium")
                                     } else {
                                         proManager.deactivatePro()
