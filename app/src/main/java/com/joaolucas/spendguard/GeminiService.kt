@@ -5,6 +5,7 @@ import io.ktor.client.call.body
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.HttpRequestRetry
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -27,19 +28,29 @@ class GeminiService(private val baseUrl: String) {
         install(HttpTimeout) {
             requestTimeoutMillis = 20_000L
         }
+        install(HttpRequestRetry) {
+            retryOnServerErrors(maxRetries = 3)
+            exponentialDelay()
+        }
     }
 
     suspend fun calculateOpportunityCost(amount: Double): OpportunityAnalysis {
-        val requestBody = buildJsonObject {
-            put("amount", amount)
+        return try {
+            val requestBody = buildJsonObject {
+                put("amount", amount)
+            }
+            client.post("$baseUrl/api/gemini/opportunity") {
+                contentType(ContentType.Application.Json)
+                setBody(requestBody)
+            }.body()
+        } catch (e: Exception) {
+            OpportunityAnalysis(
+                fiis = "Indisponível",
+                savings = "Indisponível",
+                stocks = "Indisponível",
+                motivationalMessage = "Pense no longo prazo."
+            )
         }
-        
-        val response: OpportunityAnalysis = client.post("$baseUrl/api/gemini/opportunity") {
-            contentType(ContentType.Application.Json)
-            setBody(requestBody)
-        }.body()
-        
-        return response
     }
 
     suspend fun analyzeImpulse(
@@ -49,52 +60,63 @@ class GeminiService(private val baseUrl: String) {
         userProfile: FinancialProfile = FinancialProfile(),
         emotionalState: EmotionalState? = null
     ): InterventionResult {
-        val requestBody = buildJsonObject {
-            put("item", item)
-            put("price", price)
-            put("justification", justification)
-            put("userProfileContext", userProfile.toPromptContext())
-            put("emotionalStateLabel", emotionalState?.label ?: "")
-            put("categoryOptions", SpendingCategory.geminiOptions)
-            
-            val hourlyRate = if (userProfile.monthlyIncome > 0) userProfile.monthlyIncome / 160.0 else 0.0
-            val workHours  = if (hourlyRate > 0) "%.1f".format(price / hourlyRate) else ""
-            put("workHours", workHours)
+        return try {
+            val requestBody = buildJsonObject {
+                put("item", item)
+                put("price", price)
+                put("justification", justification)
+                put("userProfileContext", userProfile.toPromptContext())
+                put("emotionalStateLabel", emotionalState?.label ?: "")
+                put("categoryOptions", SpendingCategory.geminiOptions)
+                val hourlyRate = if (userProfile.monthlyIncome > 0) userProfile.monthlyIncome / 160.0 else 0.0
+                val workHours  = if (hourlyRate > 0) "%.1f".format(price / hourlyRate) else ""
+                put("workHours", workHours)
+            }
+            val result: InterventionResult = client.post("$baseUrl/api/gemini/impulse") {
+                contentType(ContentType.Application.Json)
+                setBody(requestBody)
+            }.body()
+            result.copy(category = SpendingCategory.fromString(result.category).name)
+        } catch (e: Exception) {
+            InterventionResult(
+                allowed = true,
+                message = "Análise automática indisponível no momento. Avalie você mesmo se essa compra vale a pena.",
+                coolingOffTime = 0,
+                category = "OUTROS"
+            )
         }
-
-        val result: InterventionResult = client.post("$baseUrl/api/gemini/impulse") {
-            contentType(ContentType.Application.Json)
-            setBody(requestBody)
-        }.body()
-
-        return result.copy(category = SpendingCategory.fromString(result.category).name)
     }
 
     suspend fun generateWeeklyInsight(
         purchases: List<PurchaseEntity>,
         userProfile: FinancialProfile = FinancialProfile()
     ): WeeklyInsight {
-        val blocked  = purchases.filter { it.wasBlocked }
-        val approved = purchases.filter { !it.wasBlocked }
-        val saved    = blocked.sumOf { it.price }
-        val spent    = approved.sumOf { it.price }
-        val topCategory = blocked.groupingBy { it.category }.eachCount().maxByOrNull { it.value }?.key ?: "N/A"
-        
-        val requestBody = buildJsonObject {
-            put("blockedCount", blocked.size)
-            put("saved", saved)
-            put("approvedCount", approved.size)
-            put("spent", spent)
-            put("topCategory", topCategory)
-            put("profileContext", userProfile.toPromptContext())
+        return try {
+            val blocked  = purchases.filter { it.wasBlocked }
+            val approved = purchases.filter { !it.wasBlocked }
+            val saved    = blocked.sumOf { it.price }
+            val spent    = approved.sumOf { it.price }
+            val topCategory = blocked.groupingBy { it.category }.eachCount().maxByOrNull { it.value }?.key ?: "N/A"
+            val requestBody = buildJsonObject {
+                put("blockedCount", blocked.size)
+                put("saved", saved)
+                put("approvedCount", approved.size)
+                put("spent", spent)
+                put("topCategory", topCategory)
+                put("profileContext", userProfile.toPromptContext())
+            }
+            val result: WeeklyInsight = client.post("$baseUrl/api/gemini/weekly") {
+                contentType(ContentType.Application.Json)
+                setBody(requestBody)
+            }.body()
+            result.copy(generatedAt = System.currentTimeMillis())
+        } catch (e: Exception) {
+            WeeklyInsight(
+                summary = "Não foi possível gerar a análise da semana.",
+                motivationalMessage = "Continue economizando!",
+                generatedAt = System.currentTimeMillis()
+            )
         }
-
-        val result: WeeklyInsight = client.post("$baseUrl/api/gemini/weekly") {
-            contentType(ContentType.Application.Json)
-            setBody(requestBody)
-        }.body()
-
-        return result.copy(generatedAt = System.currentTimeMillis())
     }
 
     suspend fun extractPurchaseInfo(notificationText: String): PurchaseInfo? {
@@ -129,25 +151,33 @@ class GeminiService(private val baseUrl: String) {
         patterns: PredictivePatterns,
         userProfile: FinancialProfile = FinancialProfile()
     ): PredictiveInsight {
-        val requestBody = buildJsonObject {
-            put("topSpendingDay", patterns.topSpendingDay)
-            put("topSpendingHour", patterns.topSpendingHour)
-            put("weeklySpendingCurrent", patterns.weeklySpendingCurrent)
-            put("weeklySpendingPrevious", patterns.weeklySpendingPrevious)
-            put("spendingTrend", patterns.spendingTrend)
-            put("impulseRate", patterns.impulseRate)
-            put("impulseRateTrend", patterns.impulseRateTrend)
-            put("riskCategory", patterns.riskCategory)
-            put("riskCategoryBlockRate", patterns.riskCategoryBlockRate)
-            put("totalAnalyzed", patterns.totalAnalyzed)
-            put("totalBlocked", patterns.totalBlocked)
-            put("monthTotal", patterns.monthTotal)
-            put("profileContext", userProfile.toPromptContext())
+        return try {
+            val requestBody = buildJsonObject {
+                put("topSpendingDay", patterns.topSpendingDay)
+                put("topSpendingHour", patterns.topSpendingHour)
+                put("weeklySpendingCurrent", patterns.weeklySpendingCurrent)
+                put("weeklySpendingPrevious", patterns.weeklySpendingPrevious)
+                put("spendingTrend", patterns.spendingTrend)
+                put("impulseRate", patterns.impulseRate)
+                put("impulseRateTrend", patterns.impulseRateTrend)
+                put("riskCategory", patterns.riskCategory)
+                put("riskCategoryBlockRate", patterns.riskCategoryBlockRate)
+                put("totalAnalyzed", patterns.totalAnalyzed)
+                put("totalBlocked", patterns.totalBlocked)
+                put("monthTotal", patterns.monthTotal)
+                put("profileContext", userProfile.toPromptContext())
+            }
+            client.post("$baseUrl/api/gemini/predict") {
+                contentType(ContentType.Application.Json)
+                setBody(requestBody)
+            }.body()
+        } catch (e: Exception) {
+            PredictiveInsight(
+                title = "Análise Indisponível",
+                message = "O Guardião está fora do ar no momento. Volte mais tarde.",
+                riskLevel = "low",
+                generatedAt = System.currentTimeMillis()
+            )
         }
-
-        return client.post("$baseUrl/api/gemini/predict") {
-            contentType(ContentType.Application.Json)
-            setBody(requestBody)
-        }.body()
     }
 }

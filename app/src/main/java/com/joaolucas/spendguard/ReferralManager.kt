@@ -56,7 +56,7 @@ class ReferralManager(
 
     fun getShareText(): String {
         val code = getMyCode() ?: "SEU_CÓDIGO"
-        return "Controlo meus impulsos financeiros com o SpendGuard! 🛡️\n\n" +
+        return "Controlo meus impulsos financeiros com o SpendGuard! ️\n\n" +
                 "Use meu código de convite e ganhe 30% off no primeiro mês Pro:\n" +
                 "Código: $code\n\n" +
                 "Baixe aqui: $PLAY_STORE_URL?referral=$code"

@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -53,12 +54,12 @@ fun SettingsScreen(
     var showThemeDialog        by remember { mutableStateOf(false) }
     var showGoalDialog         by remember { mutableStateOf(false) }
     var goalInput              by remember { mutableStateOf(goalManager.getMonthlyGoal().let { if (it > 0) "%.0f".format(it) else "" }) }
-    val currentGoal            by goalManager.monthlyGoal.collectAsState()
+    val currentGoal            by goalManager.monthlyGoal.collectAsStateWithLifecycle()
 
-    val currentUser by userRepository.currentUser.collectAsState()
-    val isPro       by proManager.isPro.collectAsState()
-    val plan        by proManager.plan.collectAsState()
-    val currentTheme by themeManager.theme.collectAsState()
+    val currentUser by userRepository.currentUser.collectAsStateWithLifecycle()
+    val isPro       by proManager.isPro.collectAsStateWithLifecycle()
+    val plan        by proManager.plan.collectAsStateWithLifecycle()
+    val currentTheme by themeManager.theme.collectAsStateWithLifecycle()
     val profileManager = remember { ProfileManager(context) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -323,7 +324,6 @@ fun SettingsScreen(
                         onClick = {
                             showSignOutDialog = false
                             scope.launch {
-                                // Upload data to cloud BEFORE signing out
                                 dataSyncManager.syncUpload()
                                 
                                 userRepository.signOut()
@@ -839,27 +839,27 @@ private fun DebugNotificationPanel(context: android.content.Context) {
 
     val scenarios = listOf(
         Triple(
-            "🛒 Compra real (ML)",
+            " Compra real (ML)",
             "Pedido confirmado. Você comprou: T\u00eanis Nike Air Max 90 · R\$ 349,90. Seu pedido #ML-88271 foi aprovado.",
             true
         ),
         Triple(
-            "💳 PIX enviado (Nubank)",
+            " PIX enviado (Nubank)",
             "PIX enviado. Voc\u00ea transferiu R\$ 150,00 para Jo\u00e3o Silva. Pagamento PIX conclu\u00eddo com sucesso.",
             true
         ),
         Triple(
-            "📧 Promo\u00e7\u00e3o (deve ignorar)",
+            " Promo\u00e7\u00e3o (deve ignorar)",
             "Oferta especial para voc\u00ea! Aproveite at\u00e9 50% de desconto nos melhores produtos. Ver oferta agora!",
             false
         ),
         Triple(
-            "📄 Nota Fiscal (deve ignorar)",
+            " Nota Fiscal (deve ignorar)",
             "Sua nota fiscal est\u00e1 dispon\u00edvel. Pedido #ML-88271 — acesse sua nota fiscal eletr\u00f4nica.",
             false
         ),
         Triple(
-            "📦 Saiu p/ entrega (deve ignorar)",
+            " Saiu p/ entrega (deve ignorar)",
             "Seu pedido saiu para entrega! Previs\u00e3o de entrega: amanh\u00e3 at\u00e9 22h. Objeto postado em SP.",
             false
         )

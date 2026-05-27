@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
@@ -162,7 +163,7 @@ private fun ExploreTab(
     val gold         = MaterialTheme.colorScheme.primary
     val focusManager = LocalFocusManager.current
 
-    val isPro        by proManager.isPro.collectAsState()
+    val isPro        by proManager.isPro.collectAsStateWithLifecycle()
     val savesLeft    = proManager.librarySavesLeft()
 
     var searchQuery  by remember { mutableStateOf("") }

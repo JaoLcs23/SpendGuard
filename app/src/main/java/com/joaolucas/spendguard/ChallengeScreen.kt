@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -30,7 +31,7 @@ fun ChallengeScreen(
     val gold  = MaterialTheme.colorScheme.primary
     val black = Color(0xFF121212)
 
-    val state by challengeManager.state.collectAsState()
+    val state by challengeManager.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         challengeManager.checkCompletion()

@@ -15,15 +15,6 @@ import kotlinx.coroutines.flow.StateFlow
 import java.util.Calendar
 
 class StrictModeManager(private val context: Context) {
-
-    /**
-     * CORREÇÃO DE SEGURANÇA (Issue #9):
-     * Substituído getSharedPreferences() comum por EncryptedSharedPreferences.
-     *
-     * O limite mensal e os flags de notificação são dados financeiros do usuário.
-     * Em dispositivos rooteados, o arquivo de preferências era acessível em texto
-     * claro. Com AES-256-GCM tanto chaves quanto valores ficam cifrados em repouso.
-     */
     private val prefs: SharedPreferences = createEncryptedPrefs(context)
 
     companion object {
@@ -69,14 +60,14 @@ class StrictModeManager(private val context: Context) {
         if (pct >= 1.0 && prefs.getString(KEY_NOTIFIED_100, "") != monthKey) {
             sendNotification(
                 id      = NOTIF_ID_100,
-                title   = "🚨 Limite mensal atingido",
+                title   = " Limite mensal atingido",
                 message = "Você gastou R$ ${"%.2f".format(monthlySpent)} de R$ ${"%.2f".format(limit)} este mês. Modo Estrito ativo."
             )
             prefs.edit().putString(KEY_NOTIFIED_100, monthKey).apply()
         } else if (pct >= 0.8 && prefs.getString(KEY_NOTIFIED_80, "") != monthKey) {
             sendNotification(
                 id      = NOTIF_ID_80,
-                title   = "⚠️ 80% do limite atingido",
+                title   = "️ 80% do limite atingido",
                 message = "Você já gastou R$ ${"%.2f".format(monthlySpent)} de R$ ${"%.2f".format(limit)} este mês."
             )
             prefs.edit().putString(KEY_NOTIFIED_80, monthKey).apply()

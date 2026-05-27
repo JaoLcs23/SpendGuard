@@ -47,7 +47,7 @@ class WeeklyReviewWorker(
             " e evitou gastar R$ ${"%.2f".format(savedAmount)}" else ""
 
         val body = "Você analisou $analyzed compra${if (analyzed != 1) "s" else ""}, " +
-                "bloqueou $blocked$savingsText. Continue assim! 💪"
+                "bloqueou $blocked$savingsText. Continue assim! "
 
         val notification = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_notification)

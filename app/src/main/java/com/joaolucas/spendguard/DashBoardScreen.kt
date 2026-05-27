@@ -12,6 +12,7 @@ import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.ReceiptLong
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -41,12 +42,12 @@ fun DashboardScreen(
     val context       = LocalContext.current
     val gold          = MaterialTheme.colorScheme.primary
     val currentUserId = userRepository.getCurrentUserId() ?: ""
-    val purchases     by database.purchaseDao().getPurchasesByUser(currentUserId).collectAsState(initial = emptyList())
-    val challengeState by challengeManager.state.collectAsState()
-    val streak        by streakManager.streak.collectAsState()
-    val monthlyGoal   by goalManager.monthlyGoal.collectAsState()
-    val weeklyInsight by weeklyInsightManager.insight.collectAsState()
-    val isPro         by proManager.isPro.collectAsState()
+    val purchases     by database.purchaseDao().getPurchasesByUser(currentUserId).collectAsStateWithLifecycle(initialValue = emptyList())
+    val challengeState by challengeManager.state.collectAsStateWithLifecycle()
+    val streak        by streakManager.streak.collectAsStateWithLifecycle()
+    val monthlyGoal   by goalManager.monthlyGoal.collectAsStateWithLifecycle()
+    val weeklyInsight by weeklyInsightManager.insight.collectAsStateWithLifecycle()
+    val isPro         by proManager.isPro.collectAsStateWithLifecycle()
     val currentHour   = remember { Calendar.getInstance().get(Calendar.HOUR_OF_DAY) }
     val isNightRisk   = currentHour in 22..23 || currentHour in 0..2
 

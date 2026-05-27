@@ -29,6 +29,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -59,11 +60,11 @@ fun HistoryScreen(
     onOpenImport: () -> Unit,
     onShowPaywall: () -> Unit
 ) {
-    val isPro by proManager.isPro.collectAsState()
+    val isPro by proManager.isPro.collectAsStateWithLifecycle()
     val currentUserId = userRepository.getCurrentUserId() ?: ""
     val purchases by database.purchaseDao()
         .getPurchasesByUser(currentUserId)
-        .collectAsState(initial = emptyList())
+        .collectAsStateWithLifecycle(initialValue = emptyList())
 
     val scope   = rememberCoroutineScope()
     val context = LocalContext.current

@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 
 @Composable
@@ -41,7 +42,7 @@ fun PaywallScreen(
     val card = Color(0xFF2A2A2A)
 
     var selectedPlan by remember { mutableStateOf("yearly") }
-    val billingState by billingManager.billingState.collectAsState()
+    val billingState by billingManager.billingState.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val activity = context as? Activity

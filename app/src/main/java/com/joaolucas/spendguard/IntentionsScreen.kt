@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -22,7 +23,7 @@ fun IntentionsScreen(
     onBack: () -> Unit
 ) {
     val gold = MaterialTheme.colorScheme.primary
-    val current by intentionsManager.intention.collectAsState()
+    val current by intentionsManager.intention.collectAsStateWithLifecycle()
     var text by remember { mutableStateOf(current) }
     var saved by remember { mutableStateOf(false) }
 

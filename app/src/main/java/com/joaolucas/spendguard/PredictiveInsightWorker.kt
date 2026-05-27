@@ -101,7 +101,7 @@ class PredictiveInsightWorker(
 
         nm.notify(NOTIF_ID, NotificationCompat.Builder(appContext, CHANNEL_ID)
             .setSmallIcon(icon)
-            .setContentTitle("🔮 ${insight.title}")
+            .setContentTitle(" ${insight.title}")
             .setContentText(insight.message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(insight.message))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)

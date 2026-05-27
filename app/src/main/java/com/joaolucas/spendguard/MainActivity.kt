@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.joaolucas.spendguard.ui.theme.SpendGuardTheme
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.delay
@@ -67,7 +68,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val context      = LocalContext.current
             val themeManager = remember { ThemeManager(context) }
-            val appTheme     by themeManager.theme.collectAsState()
+            val appTheme     by themeManager.theme.collectAsStateWithLifecycle()
             val forceDark: Boolean? = when (appTheme) {
                 AppTheme.DARK   -> true
                 AppTheme.LIGHT  -> false
@@ -81,7 +82,7 @@ class MainActivity : ComponentActivity() {
                 var screen         by remember { mutableStateOf(AppScreen.SPLASH) }
                 val scope          = rememberCoroutineScope()
 
-                val deepLinkUri by pendingDeepLink.collectAsState()
+                val deepLinkUri by pendingDeepLink.collectAsStateWithLifecycle()
                 LaunchedEffect(deepLinkUri) {
                     val uri = deepLinkUri ?: return@LaunchedEffect
                     when {
@@ -444,8 +445,8 @@ fun MainScreen(
     var autoItemPrice by remember { mutableStateOf(0.0) }
     var isPix         by remember { mutableStateOf(false) }
 
-    val widgetItem  by pendingWidgetItem.collectAsState()
-    val widgetPrice by pendingWidgetPrice.collectAsState()
+    val widgetItem  by pendingWidgetItem.collectAsStateWithLifecycle()
+    val widgetPrice by pendingWidgetPrice.collectAsStateWithLifecycle()
     LaunchedEffect(widgetItem) {
         val name = widgetItem ?: return@LaunchedEffect
         if (name.isNotEmpty()) {
@@ -457,19 +458,19 @@ fun MainScreen(
         }
     }
 
-    val itemToReevaluate by pendingReevaluation.collectAsState()
+    val itemToReevaluate by pendingReevaluation.collectAsStateWithLifecycle()
     var showJustificationField  by remember { mutableStateOf(false) }
     var newJustification        by remember { mutableStateOf("") }
     var isAnalyzingReevaluation by remember { mutableStateOf(false) }
 
     val lastPurchase by if (itemToReevaluate != null) {
-        database.purchaseDao().getLastPurchaseByName(itemToReevaluate!!).collectAsState(initial = null)
+        database.purchaseDao().getLastPurchaseByName(itemToReevaluate!!).collectAsStateWithLifecycle(initialValue = null)
     } else {
         remember { mutableStateOf(null) }
     }
 
     val currentUserId = remember { userRepository.getCurrentUserId() ?: "" }
-    val allPurchases by database.purchaseDao().getPurchasesByUser(currentUserId).collectAsState(initial = emptyList())
+    val allPurchases by database.purchaseDao().getPurchasesByUser(currentUserId).collectAsStateWithLifecycle(initialValue = emptyList())
 
     LaunchedEffect(allPurchases) {
         if (allPurchases.isNotEmpty()) {
@@ -477,7 +478,7 @@ fun MainScreen(
         }
     }
 
-    val newlyUnlocked by achievementsManager.newlyUnlocked.collectAsState()
+    val newlyUnlocked by achievementsManager.newlyUnlocked.collectAsStateWithLifecycle()
     if (newlyUnlocked != null) {
         AlertDialog(
             onDismissRequest = { achievementsManager.consumeNewlyUnlocked() },

@@ -113,7 +113,7 @@ class DebugNotificationHelper(private val context: android.content.Context) {
 
         nm.notify(notifId, androidx.core.app.NotificationCompat.Builder(context, ShoppingNotificationListener.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("🛡[DEBUG] Compra — $store")
+            .setContentTitle("[DEBUG] Compra — $store")
             .setContentText("$itemName · $priceText")
             .setStyle(androidx.core.app.NotificationCompat.BigTextStyle()
                 .bigText("Você acabou de comprar:\n$itemName\n$priceText\n\nEssa compra foi planejada ou foi por impulso? Analise agora com o Guardião.")

@@ -289,7 +289,7 @@ class ShoppingNotificationListener : NotificationListenerService() {
 
         nm.notify(notifId, NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("🛡Compra detectada — $store")
+            .setContentTitle("Compra detectada — $store")
             .setContentText("$itemName · $priceText")
             .setStyle(NotificationCompat.BigTextStyle()
                 .bigText("Você acabou de comprar:\n$itemName\n$priceText\n\nEssa compra foi planejada ou foi por impulso? Analise agora com o Guardião.")

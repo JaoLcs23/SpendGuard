@@ -24,6 +24,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -78,7 +80,7 @@ fun SimulatorScreen(
     var result    by remember { mutableStateOf<InterventionResult?>(null) }
     var selectedEmotion by remember { mutableStateOf<EmotionalState?>(null) }
     var showEmotionPicker by remember { mutableStateOf(false) }
-    val currentIntention by intentionsManager.intention.collectAsState()
+    val currentIntention by intentionsManager.intention.collectAsStateWithLifecycle()
 
     val gold  = MaterialTheme.colorScheme.primary
     val quote = remember { guardianQuotes.random() }
