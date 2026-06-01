@@ -126,7 +126,7 @@ Você já comprou algo por impulso e se arrependeu depois? O SpendGuard intercep
 ━━━━━━━━━━━━━━━━━━━━━━━━━
 🤖 GUARDIÃO ANTI-IMPULSO COM IA
 ━━━━━━━━━━━━━━━━━━━━━━━━━
-Descreva o que quer comprar e por que. O Guardião analisa sua justificativa com Gemini AI, detecta padrões emocionais e dá um veredicto claro: compra consciente ou impulso disfarçado.
+Descreva o que quer comprar e por que. O Guardião analisa sua justificativa com Gemini AI, detecta padrões emocionais e dá um veredito claro: compra consciente ou impulso disfarçado.
 
 Antes de cada análise, o app pergunta como você está. Uma compra feita estressado ou animado demais recebe uma abordagem diferente — porque 40% das compras por impulso acontecem em estado emocional alterado.
 

@@ -151,7 +151,6 @@ class UserRepository {
                 ) { filter { eq("id", userId) } }
                 loadUserProfile()
             } catch (e: Exception) {
-                // Se o Supabase bloquear (ex: RLS), força localmente no Debug
                 _currentUser.value = _currentUser.value?.copy(isPro = true, planType = planType)
             }
             Result.success(Unit)
@@ -294,6 +293,22 @@ class UserRepository {
             Log.d("UserRepository", "clearAllPurchases: SUCCESS")
         } catch (e: Exception) {
             Log.e("UserRepository", "clearAllPurchases: FAILED", e)
+        }
+    }
+
+    suspend fun deletePurchase(timestamp: Long, itemName: String) {
+        val userId = getCurrentUserId() ?: return
+        try {
+            client.postgrest["purchases"].delete {
+                filter { 
+                    eq("user_id", userId)
+                    eq("timestamp", timestamp)
+                    eq("item_name", itemName)
+                }
+            }
+            Log.d("UserRepository", "deletePurchase: SUCCESS")
+        } catch (e: Exception) {
+            Log.e("UserRepository", "deletePurchase: FAILED", e)
         }
     }
 }

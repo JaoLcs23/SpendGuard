@@ -692,7 +692,12 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
                     if (currentGoal > 0) {
-                        TextButton(onClick = { goalManager.clearGoal(); goalInput = ""; showGoalDialog = false }) {
+                        TextButton(onClick = { 
+                            goalManager.clearGoal()
+                            kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) { dataSyncManager.syncUpload() }
+                            goalInput = ""
+                            showGoalDialog = false 
+                        }) {
                             Text("Remover meta", color = MaterialTheme.colorScheme.error)
                         }
                     }
@@ -704,6 +709,7 @@ fun SettingsScreen(
                         val value = goalInput.toDoubleOrNull()
                         if (value != null && value > 0) {
                             goalManager.setMonthlyGoal(value)
+                            kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) { dataSyncManager.syncUpload() }
                             showGoalDialog = false
                         }
                     },

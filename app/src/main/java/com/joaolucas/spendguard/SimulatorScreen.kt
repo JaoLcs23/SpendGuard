@@ -57,6 +57,7 @@ fun SimulatorScreen(
     challengeManager: ChallengeManager,
     streakManager: StreakManager,
     intentionsManager: IntentionsManager,
+    onNavigate: (ViewState) -> Unit,
     autoItemName: String = "",
     autoItemPrice: Double = 0.0,
     isPix: Boolean = false
@@ -80,7 +81,8 @@ fun SimulatorScreen(
     var result    by remember { mutableStateOf<InterventionResult?>(null) }
     var selectedEmotion by remember { mutableStateOf<EmotionalState?>(null) }
     var showEmotionPicker by remember { mutableStateOf(false) }
-    val currentIntention by intentionsManager.intention.collectAsStateWithLifecycle()
+    val intentions by intentionsManager.intentions.collectAsStateWithLifecycle()
+    val currentIntentions = intentions.filter { it.status == "CURRENT" }
 
     val gold  = MaterialTheme.colorScheme.primary
     val quote = remember { guardianQuotes.random() }
@@ -125,7 +127,7 @@ fun SimulatorScreen(
             }
         }
 
-        if (currentIntention.isNotEmpty()) {
+        if (currentIntentions.isNotEmpty()) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
@@ -135,9 +137,9 @@ fun SimulatorScreen(
                     Icon(Icons.Outlined.Lightbulb, null, tint = gold, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(8.dp))
                     Column {
-                        Text("Sua intenção", style = MaterialTheme.typography.labelSmall,
+                        Text("Sua intenção atual", style = MaterialTheme.typography.labelSmall,
                             color = gold.copy(alpha = 0.7f), fontWeight = FontWeight.Bold)
-                        Text(currentIntention, style = MaterialTheme.typography.bodySmall,
+                        Text(currentIntentions.joinToString(" • ") { it.text }, style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface, lineHeight = 18.sp)
                     }
                 }
@@ -333,6 +335,11 @@ fun SimulatorScreen(
             onClick = {
                 focusManager.clearFocus()
 
+                if (!proManager.canUseGuardian()) {
+                    onNavigate(ViewState.PAYWALL)
+                    return@Button
+                }
+
                 val price = itemPrice.replace(",", ".").toDoubleOrNull()
                 if (itemName.isBlank() || price == null || price <= 0 || justification.isBlank()) {
                     errorMsg = "Preencha todos os campos corretamente."
@@ -371,6 +378,7 @@ fun SimulatorScreen(
 
                     try {
                         val analysis = geminiService.analyzeImpulse(itemName, price, justification, userProfile)
+                        proManager.registerGuardianUse()
                         result = analysis
 
                         val purchase = PurchaseEntity(

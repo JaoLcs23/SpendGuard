@@ -16,6 +16,9 @@ class WeeklyReviewWorker(
 ) : Worker(context, workerParams) {
 
     override fun doWork(): Result {
+        val proManager = ProManager(applicationContext)
+        if (!proManager.isPro.value) return Result.success()
+
         val analyzed  = inputData.getInt("analyzed", 0)
         val blocked   = inputData.getInt("blocked", 0)
         val savedAmount = inputData.getDouble("saved_amount", 0.0)

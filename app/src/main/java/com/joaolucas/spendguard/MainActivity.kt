@@ -675,6 +675,7 @@ fun MainScreen(
                     challengeManager    = challengeManager,
                     streakManager       = streakManager,
                     intentionsManager   = intentionsManager,
+                    onNavigate          = { destination -> currentView = destination },
                     autoItemName        = autoItemName,
                     autoItemPrice       = autoItemPrice,
                     isPix               = isPix
@@ -688,6 +689,7 @@ fun MainScreen(
                     goalManager          = goalManager,
                     weeklyInsightManager = weeklyInsightManager,
                     proManager           = proManager,
+                    profileManager       = profileManager,
                     onNavigate           = { destination -> currentView = destination }
                 )
                 ViewState.HISTORY -> HistoryScreen(
@@ -717,6 +719,8 @@ fun MainScreen(
                 ViewState.CHALLENGE -> { currentView = ViewState.DASHBOARD }
                 ViewState.INTENTIONS -> IntentionsScreen(
                     intentionsManager = intentionsManager,
+                    dataSyncManager   = dataSyncManager,
+                    database          = database,
                     onBack            = { currentView = ViewState.DASHBOARD }
                 )
                 ViewState.IMPORT -> ImportScreen(
@@ -740,6 +744,7 @@ fun MainScreen(
                     goalManager          = goalManager,
                     weeklyInsightManager = weeklyInsightManager,
                     proManager           = proManager,
+                    profileManager       = profileManager,
                     onNavigate           = { destination -> currentView = destination }
                 )
             }

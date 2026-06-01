@@ -30,7 +30,7 @@ SpendGuard é um aplicativo Android que intercepta compras por impulso antes que
 
 ### Histórico
 - Filtros por status e período personalizado
-- Cards expansíveis com veredicto completo
+- Cards expansíveis com veredito completo
 - Exportação de planilha com autenticação biométrica (Pro)
 
 ### Widget 4×2

@@ -164,7 +164,7 @@ Integração com Google Play Billing 7.x.
 | price | Double | Valor em reais |
 | justification | String | Justificativa fornecida |
 | wasBlocked | Boolean | Resultado da análise |
-| aiMessage | String | Veredicto completo da IA |
+| aiMessage | String | Veredito completo da IA |
 | coolingOffTime | Int | Tempo de reflexão em horas |
 | category | String | Categoria inferida pela IA |
 | timestamp | Long | Unix timestamp da análise |

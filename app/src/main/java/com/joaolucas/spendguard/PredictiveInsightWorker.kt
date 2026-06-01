@@ -39,12 +39,14 @@ class PredictiveInsightWorker(
 
     override suspend fun doWork(): Result {
         return try {
+            val proManager = ProManager(appContext)
+            if (!proManager.isPro.value) return Result.success()
+
             val manager = PredictiveInsightManager(appContext)
             if (!manager.shouldRefresh()) return Result.success()
 
             val userRepo = UserRepository()
             val userId = userRepo.getCurrentUserId() ?: return Result.success()
-            if (!userRepo.isPro()) return Result.success()
 
             val db = SpendGuardDatabase.getDatabase(appContext)
             val thirtyDaysAgo = System.currentTimeMillis() - 30L * 24 * 60 * 60 * 1000

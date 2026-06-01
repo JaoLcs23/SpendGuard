@@ -69,7 +69,7 @@ fun OnboardingScreen(isReplay: Boolean = false, onFinish: () -> Unit) {
             description = "Descreva o que quer comprar. O Guardião analisa sua justificativa com IA e separa necessidade real de impulso — antes que o dinheiro saia da sua conta.",
             highlights  = listOf(
                 Icons.Outlined.Mood             to "Check-in emocional antes de cada análise",
-                Icons.Outlined.AutoAwesome      to "IA considera sua emoção no veredicto",
+                Icons.Outlined.AutoAwesome      to "IA considera sua emoção no veredito",
                 Icons.Outlined.Timer            to "Reflexão de 24h a 1 semana conforme o valor",
                 Icons.Outlined.Lightbulb        to "Sua intenção financeira aparece antes de cada análise"
             )

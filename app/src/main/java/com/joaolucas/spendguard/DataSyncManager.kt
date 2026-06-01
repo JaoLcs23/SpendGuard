@@ -84,7 +84,7 @@ class DataSyncManager(
                     streakManager.setStreakCount(remoteData.streakCount)
                     streakManager.setStreakLastDay(remoteData.streakLastDay)
                     goalManager.setMonthlyGoalBits(remoteData.monthlyGoalBits)
-                    intentionsManager.setIntention(remoteData.currentIntention)
+                    intentionsManager.setIntentionJson(remoteData.currentIntention)
 
                     try {
                         val achJson = JSONObject(remoteData.achievementsJson)
@@ -124,7 +124,7 @@ class DataSyncManager(
                     streakCount = streakManager.getStreakCount(),
                     streakLastDay = streakManager.getStreakLastDay(),
                     monthlyGoalBits = goalManager.getMonthlyGoalBits(),
-                    currentIntention = intentionsManager.getIntention(),
+                    currentIntention = intentionsManager.getIntentionJson(),
                     achievementsJson = achievementsManager.toJson().toString(),
                     profileJson = profileManager.toJson()
                 )
@@ -138,16 +138,7 @@ class DataSyncManager(
                     client.postgrest["user_data"].insert(userData)
                 } else {
                     Log.d(TAG, "syncUpload: updating existing record")
-                    client.postgrest["user_data"].update(
-                        mapOf(
-                            "streak_count" to userData.streakCount,
-                            "streak_last_day" to userData.streakLastDay,
-                            "monthly_goal_bits" to userData.monthlyGoalBits,
-                            "current_intention" to userData.currentIntention,
-                            "achievements_json" to userData.achievementsJson,
-                            "profile_json" to userData.profileJson
-                        )
-                    ) { filter { eq("user_id", userId) } }
+                    client.postgrest["user_data"].update(userData) { filter { eq("user_id", userId) } }
                 }
                 Log.d(TAG, "syncUpload: success")
             } catch (e: Exception) {

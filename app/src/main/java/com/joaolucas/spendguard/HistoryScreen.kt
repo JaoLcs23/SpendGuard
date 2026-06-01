@@ -152,7 +152,7 @@ fun HistoryScreen(
                     onClick = {
                         scope.launch { 
                             database.purchaseDao().deleteByUser(currentUserId)
-                            userRepository.clearAllPurchases() 
+                            userRepository.clearAllPurchases()
                         }
                         showClearDialog = false
                     },
@@ -621,7 +621,12 @@ fun HistoryScreen(
                         onToggle    = {
                             expandedCardId = if (expandedCardId == purchase.id) -1 else purchase.id
                         },
-                        onDelete    = { scope.launch { database.purchaseDao().delete(purchase) } },
+                        onDelete    = { 
+                            scope.launch { 
+                                database.purchaseDao().delete(purchase)
+                                userRepository.deletePurchase(purchase.timestamp, purchase.itemName)
+                            } 
+                        },
                         onEdit      = { editingPurchase = purchase }
                     )
                 }
@@ -995,7 +1000,7 @@ fun PurchaseHistoryCard(
                 if (purchase.aiMessage.isNotEmpty()) {
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
-                            "Veredicto do Guardião",
+                            "Veredito do Guardião",
                             style      = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             color      = accentColor.copy(alpha = 0.8f)
